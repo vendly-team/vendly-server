@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VendlyServer.Api/VendlyServer.Api.csproj" />
+    <Project Path="src/VendlyServer.Application/VendlyServer.Application.csproj" />
+    <Project Path="src/VendlyServer.Domain/VendlyServer.Domain.csproj" />
+    <Project Path="src/VendlyServer.Infrastructure/VendlyServer.Infrastructure.csproj" />
+  </Folder>
+</Solution>
