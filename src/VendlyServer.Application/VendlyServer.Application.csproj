@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\VendlyServer.Domain\VendlyServer.Domain.csproj" />
+    <ProjectReference Include="..\VendlyServer.Infrastructure\VendlyServer.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

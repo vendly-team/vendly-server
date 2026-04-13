@@ -1,5 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using VendlyServer.Application.Jobs.BtsCatalog;
+using VendlyServer.Application.Services.BtsRef;
 
 namespace VendlyServer.Application;
 
@@ -9,11 +11,11 @@ public static class Dependencies
     {
         services.AddValidatorsFromAssembly(typeof(Dependencies).Assembly);
 
-        // Register services here:
-        // services.AddScoped<IDocumentService, DocumentService>();
+        // Services
+        services.AddScoped<IBtsRefService, BtsRefService>();
 
-        // Register jobs here:
-        // services.AddScoped<ISomeJob, SomeJob>();
+        // Jobs
+        services.AddScoped<IBtsCatalogSyncJob, BtsCatalogSyncJob>();
 
         return services;
     }

@@ -1,14 +1,16 @@
+using Hangfire;
+using VendlyServer.Application.Jobs.BtsCatalog;
+
 namespace VendlyServer.Application.Jobs;
 
 public static class JobsRegistrar
 {
     public static void RegisterRecurringJobs()
     {
-        // Register recurring jobs here using Hangfire
-        // Example:
-        // RecurringJob.AddOrUpdate<ISomeJob>(
-        //     "job-id",
-        //     job => job.ExecuteAsync(),
-        //     "0 * * * *");
+        // BTS catalog sync — runs every Sunday at 03:00 UTC
+        RecurringJob.AddOrUpdate<IBtsCatalogSyncJob>(
+            "bts-catalog-sync",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Weekly(DayOfWeek.Sunday, 3));
     }
 }

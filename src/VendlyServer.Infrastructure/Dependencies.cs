@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using VendlyServer.Infrastructure.Authentication;
+using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Infrastructure;
@@ -14,7 +15,8 @@ public static class Dependencies
     {
         services
             .ConfigureDbContext(configuration)
-            .ConfigureAuthentication();
+            .ConfigureAuthentication()
+            .ConfigureBtsExpress();
 
         return services;
     }
@@ -45,6 +47,16 @@ public static class Dependencies
             .AddJwtBearer();
 
         services.AddScoped<IJwtProvider, JwtProvider>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureBtsExpress(this IServiceCollection services)
+    {
+        services.ConfigureOptions<BtsExpressOptionsSetup>();
+        services.AddMemoryCache();
+        services.AddHttpClient("BtsExpress");
+        services.AddSingleton<IBtsBroker, BtsBroker>();
 
         return services;
     }

@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "codebase-memory-mcp"
+  ],
+  "enableAllProjectMcpServers": true
+}
