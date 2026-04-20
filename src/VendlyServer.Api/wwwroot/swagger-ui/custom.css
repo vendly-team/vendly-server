@@ -1,0 +1,70 @@
+/* ── Global transitions ─────────────────────────────────────────────────── */
+.swagger-ui *,
+.swagger-ui *::before,
+.swagger-ui *::after {
+  transition:
+    background-color 0.5s ease,
+    border-color     0.5s ease,
+    border-radius    0.5s ease,
+    box-shadow       0.5s ease,
+    color            0.5s ease,
+    opacity          0.5s ease,
+    transform        0.5s ease !important;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+.swagger-ui input[type="text"],
+.swagger-ui input[type="email"],
+.swagger-ui input[type="file"],
+.swagger-ui input[type="password"],
+.swagger-ui input[type="search"],
+.swagger-ui textarea {
+  border-radius: 12px !important;
+}
+
+/* ── Selects / Dropdowns ────────────────────────────────────────────────── */
+.swagger-ui select {
+  border-radius: 12px !important;
+}
+
+/* ── Operation collapse bars (tag groups & individual operations) ────────── */
+.swagger-ui .opblock-summary,
+.swagger-ui .opblock-tag,
+.swagger-ui .opblock-summary-method,
+.swagger-ui .modal-ux,
+.swagger-ui .opblock-tag-section > h4,
+.swagger-ui .opblock {
+  border-radius: 12px !important;
+}
+
+/* ── Code / response preview areas ─────────────────────────────────────── */
+.swagger-ui .highlight-code,
+.swagger-ui .microlight,
+.swagger-ui pre,
+.swagger-ui code,
+.swagger-ui .model-box,
+.swagger-ui .response-col_description__inner div.markdown,
+.swagger-ui .renderedMarkdown pre,
+.swagger-ui .curl-command,
+.swagger-ui .curl-command pre {
+  border-radius: 12px !important;
+}
+
+.swagger-ui .opblock-tag {
+  box-shadow: none !important;
+  border: none !important;
+  background: #0000000d;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.swagger-ui button,
+.swagger-ui .btn {
+  border-radius: 12px !important;
+}
+
+/* ── Model / schema boxes ───────────────────────────────────────────────── */
+.swagger-ui .model-container,
+.swagger-ui .model,
+.swagger-ui section.models .model-container {
+  border-radius: 12px !important;
+}

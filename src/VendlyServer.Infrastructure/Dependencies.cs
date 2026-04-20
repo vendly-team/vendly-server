@@ -47,6 +47,7 @@ public static class Dependencies
             .AddJwtBearer();
 
         services.AddScoped<IJwtProvider, JwtProvider>();
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
 
         return services;
     }

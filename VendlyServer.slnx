@@ -5,4 +5,7 @@
     <Project Path="src/VendlyServer.Domain/VendlyServer.Domain.csproj" />
     <Project Path="src/VendlyServer.Infrastructure/VendlyServer.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VendlyServer.Tests/VendlyServer.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -20,7 +20,13 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseStaticFiles();
     app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.DocumentTitle = "Vendly Server API";
+        options.InjectStylesheet("/swagger-ui/custom.css");
+    });
     app.MapScalarApiReference(options =>
     {
         options

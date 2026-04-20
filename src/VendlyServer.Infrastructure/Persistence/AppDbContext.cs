@@ -270,6 +270,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Notification>()
             .Property(x => x.ProviderResponse).HasColumnType("jsonb");
+
+        // Value converters for JsonDocument when using non-PostgreSQL providers (e.g. InMemory in tests)
+        if (Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            var jsonConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<JsonDocument, string>(
+                v => v.RootElement.GetRawText(),
+                v => JsonDocument.Parse(v));
+
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+                foreach (var property in entityType.GetProperties()
+                             .Where(p => p.ClrType == typeof(JsonDocument)))
+                    property.SetValueConverter(jsonConverter);
+        }
     }
 
     private void TrackActionsAt()
