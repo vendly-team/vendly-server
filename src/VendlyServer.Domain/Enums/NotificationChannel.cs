@@ -1,3 +1,8 @@
 namespace VendlyServer.Domain.Enums;
 
-public enum NotificationChannel { Sms, Email, Push }
+public enum NotificationChannel
+{
+    Sms, 
+    Email, 
+    Push
+}

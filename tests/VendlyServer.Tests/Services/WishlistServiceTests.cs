@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Wishlist;
 using VendlyServer.Application.Services.Wishlist.Contracts;
-using VendlyServer.Domain.Entities.Catalog;
+using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Tests.Services;

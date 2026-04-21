@@ -4,7 +4,6 @@ using VendlyServer.Domain.Entities.Logs;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Entities.Public;
 using VendlyServer.Domain.Entities.Ref;
-using VendlyServer.Domain.Enums;
 
 namespace VendlyServer.Infrastructure.Persistence;
 
@@ -13,20 +12,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // public
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
-    public DbSet<CustomerAddress> CustomerAddresses { get; set; }
 
-    // catalog
+    #region Catalog
+
     public DbSet<Category> Categories { get; set; }
-    public DbSet<Product> Products { get; set; }
-    public DbSet<ProductMeasurement> ProductMeasurements { get; set; }
-    public DbSet<ProductImage> ProductImages { get; set; }
-    public DbSet<ProductSpec> ProductSpecs { get; set; }
-    public DbSet<ProductSyncMeta> ProductSyncMetas { get; set; }
-    public DbSet<ProductFieldOverride> ProductFieldOverrides { get; set; }
     public DbSet<Discount> Discounts { get; set; }
     public DbSet<DiscountProduct> DiscountProducts { get; set; }
-    public DbSet<Wishlist> Wishlists { get; set; }
+    public DbSet<Product> Products { get; set; }
+    public DbSet<ProductMeasurement> ProductMeasurements { get; set; }
+    public DbSet<ProductVariant> ProductVariants { get; set; }
     public DbSet<Review> Reviews { get; set; }
+    public DbSet<VariantOption> VariantOptions { get; set; }
+    public DbSet<VariantOptionValue> VariantOptionValues { get; set; }
+    public DbSet<VariantType> VariantTypes { get; set; }
+    public DbSet<Wishlist> Wishlists { get; set; }
+    
+    #endregion Catalog
 
     // orders
     public DbSet<Cart> Carts { get; set; }
@@ -46,12 +47,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BtsBranchRef> BtsBranches { get; set; }
     public DbSet<BtsPackageTypeRef> BtsPackageTypes { get; set; }
     public DbSet<BtsPostTypeRef> BtsPostTypes { get; set; }
+    public DbSet<Address> Addresses { get; set; }
 
     // logs
     public DbSet<SyncLog> SyncLogs { get; set; }
     public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
-    public DbSet<AuditLog> AuditLogs { get; set; }
-    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationLog> NotificationLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,37 +69,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(x => x.Token).IsUnique();
 
-        modelBuilder.Entity<Category>()
-            .HasIndex(x => x.Slug).IsUnique();
-
-        modelBuilder.Entity<Product>(entity =>
-        {
-            entity.HasIndex(x => x.Slug).IsUnique();
-            entity.HasIndex(x => x.Sku).IsUnique();
-            entity.Property(x => x.Price).HasPrecision(18, 2);
-            entity.Property(x => x.SalePrice).HasPrecision(18, 2);
-        });
-
         modelBuilder.Entity<ProductMeasurement>(entity =>
         {
-            entity.HasIndex(x => x.ProductId).IsUnique();
+            entity.HasIndex(x => x.ProductVariantId).IsUnique();
             entity.Property(x => x.WeightKg).HasPrecision(10, 3);
             entity.Property(x => x.LengthCm).HasPrecision(10, 2);
             entity.Property(x => x.WidthCm).HasPrecision(10, 2);
             entity.Property(x => x.HeightCm).HasPrecision(10, 2);
             entity.Property(x => x.VolumeCm3).HasPrecision(14, 2);
         });
-
-        modelBuilder.Entity<ProductSyncMeta>(entity =>
-        {
-            entity.HasIndex(x => x.ProductId).IsUnique();
-            entity.Property(x => x.ExtPrice).HasPrecision(18, 2);
-            entity.Property(x => x.ExtWeightKg).HasPrecision(10, 3);
-            entity.Property(x => x.ExtLengthCm).HasPrecision(10, 2);
-            entity.Property(x => x.ExtWidthCm).HasPrecision(10, 2);
-            entity.Property(x => x.ExtHeightCm).HasPrecision(10, 2);
-        });
-
+        
         modelBuilder.Entity<Wishlist>()
             .HasIndex(x => new { x.UserId, x.ProductId }).IsUnique();
 
@@ -152,62 +132,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BtsPostTypeRef>()
             .HasIndex(x => x.BtsId).IsUnique();
 
-        // === Enum to string conversions ===
-        modelBuilder.Entity<User>()
-            .Property(x => x.Role).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<Product>()
-            .Property(x => x.SyncSource).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<ProductSyncMeta>()
-            .Property(x => x.LastSyncStatus).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<Discount>(entity =>
-        {
-            entity.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
-            entity.Property(x => x.Scope).HasConversion<string>().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<Review>()
-            .Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<Order>(entity =>
-        {
-            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-            entity.Property(x => x.DeliveryStatus).HasConversion<string>().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<OrderStatusHistory>()
-            .Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<Payment>(entity =>
-        {
-            entity.Property(x => x.Provider).HasConversion<string>().HasMaxLength(50);
-            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<OrderCancellation>()
-            .Property(x => x.ReasonCode).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<OrderReturn>(entity =>
-        {
-            entity.Property(x => x.ReasonCode).HasConversion<string>().HasMaxLength(50);
-            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<SyncLog>()
-            .Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
-
-        modelBuilder.Entity<Notification>(entity =>
-        {
-            entity.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
-            entity.Property(x => x.Channel).HasConversion<string>().HasMaxLength(50);
-        });
-
         // === JSONB column types ===
-        modelBuilder.Entity<CustomerAddress>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
-
+        
         modelBuilder.Entity<Category>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
 
@@ -217,20 +143,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ProductMeasurement>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
 
-        modelBuilder.Entity<ProductImage>()
+        modelBuilder.Entity<ProductVariant>()
+            .Property(x => x.Images).HasColumnType("jsonb");
+
+        modelBuilder.Entity<ProductVariant>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
 
-        modelBuilder.Entity<ProductSpec>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
-
-        modelBuilder.Entity<ProductSyncMeta>()
-            .Property(x => x.RawPayload).HasColumnType("jsonb");
-
-        modelBuilder.Entity<Discount>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
-
-        modelBuilder.Entity<Review>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
 
         modelBuilder.Entity<Cart>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
@@ -262,13 +180,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BtsWebhookEvent>()
             .Property(x => x.RawPayload).HasColumnType("jsonb");
 
-        modelBuilder.Entity<AuditLog>(entity =>
-        {
-            entity.Property(x => x.OldValue).HasColumnType("jsonb");
-            entity.Property(x => x.NewValue).HasColumnType("jsonb");
-        });
-
-        modelBuilder.Entity<Notification>()
+        modelBuilder.Entity<NotificationLog>()
             .Property(x => x.ProviderResponse).HasColumnType("jsonb");
 
         // Value converters for JsonDocument when using non-PostgreSQL providers (e.g. InMemory in tests)

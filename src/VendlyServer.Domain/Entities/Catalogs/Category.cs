@@ -12,16 +12,13 @@ public class Category : AuditableModelBase<long>
     [MaxLength(255)]
     public required string Name { get; set; }
 
-    [Required]
-    [MaxLength(255)]
-    public required string Slug { get; set; }
-
+    [MaxLength(1000)]
     public string? ImageUrl { get; set; }
 
     public bool IsActive { get; set; } = true;
 
     public JsonDocument? Metadata { get; set; }
 
-    public ICollection<Product> Products { get; set; } = new List<Product>();
-    public ICollection<Discount> Discounts { get; set; } = new List<Discount>();
+    public ICollection<Product> Products { get; set; } = [];
+    public ICollection<Discount> Discounts { get; set; } = [];
 }

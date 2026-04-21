@@ -19,12 +19,7 @@ public class Review : AuditableModelBase<long>
 
     public short Rating { get; set; }
 
-    [Required]
-    public required string Body { get; set; }
-
-    public ReviewStatus Status { get; set; } = ReviewStatus.Pending;
-
-    public JsonDocument? Metadata { get; set; }
+    public string? Feedback { get; set; }
 
     [ForeignKey(nameof(ProductId))]
     public Product Product { get; set; } = null!;

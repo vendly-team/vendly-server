@@ -11,31 +11,13 @@ public class Product : AuditableModelBase<long>
 {
     public long CategoryId { get; set; }
 
-    [Required]
     [MaxLength(255)]
     public required string Name { get; set; }
 
-    [Required]
-    [MaxLength(255)]
-    public required string Slug { get; set; }
-
-    [Required]
-    [MaxLength(100)]
-    public required string Sku { get; set; }
-
+    [MaxLength(2000)]
     public string? Description { get; set; }
 
-    public decimal Price { get; set; }
-
-    public decimal? SalePrice { get; set; }
-
-    public DateTime? SaleEndsAt { get; set; }
-
-    public int Stock { get; set; }
-
     public SyncSource SyncSource { get; set; } = SyncSource.Manual;
-
-    public bool HasSynced { get; set; }
 
     public bool IsActive { get; set; } = true;
 
@@ -43,13 +25,10 @@ public class Product : AuditableModelBase<long>
 
     [ForeignKey(nameof(CategoryId))]
     public Category Category { get; set; } = null!;
-
-    public ProductMeasurement? Measurements { get; set; }
-    public ProductSyncMeta? SyncMeta { get; set; }
-    public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
-    public ICollection<ProductSpec> Specs { get; set; } = new List<ProductSpec>();
-    public ICollection<ProductFieldOverride> FieldOverrides { get; set; } = new List<ProductFieldOverride>();
-    public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
-    public ICollection<Review> Reviews { get; set; } = new List<Review>();
-    public ICollection<DiscountProduct> DiscountProducts { get; set; } = new List<DiscountProduct>();
+    
+    public ICollection<VariantType> VariantTypes { get; set; } = [];
+    public ICollection<ProductVariant> Variants { get; set; } = [];
+    public ICollection<Wishlist> Wishlists { get; set; } = [];
+    public ICollection<Review> Reviews { get; set; } = [];
+    public ICollection<DiscountProduct> DiscountProducts { get; set; } = [];
 }

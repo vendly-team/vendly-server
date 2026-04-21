@@ -2,6 +2,7 @@ using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using VendlyServer.Domain.Entities.Ref;
 
 namespace VendlyServer.Domain.Entities.Public;
 
@@ -30,6 +31,6 @@ public class User : AuditableModelBase<long>
 
     public bool IsBlocked { get; set; }
 
-    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
-    public ICollection<CustomerAddress> Addresses { get; set; } = new List<CustomerAddress>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<Address> Addresses { get; set; } = [];
 }

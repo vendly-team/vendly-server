@@ -1,3 +1,8 @@
 namespace VendlyServer.Domain.Enums;
 
-public enum PaymentProvider { Click, Payme, Card }
+public enum PaymentProvider
+{
+    Click, 
+    Payme, 
+    Card
+}

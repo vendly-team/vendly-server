@@ -1,3 +1,7 @@
 namespace VendlyServer.Domain.Enums;
 
-public enum SyncSource { Manual, External }
+public enum SyncSource
+{
+    Manual, 
+    External
+}
