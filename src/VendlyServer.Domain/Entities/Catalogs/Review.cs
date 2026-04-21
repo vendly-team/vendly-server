@@ -1,14 +1,14 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Entities.Public;
-using VendlyServer.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace VendlyServer.Domain.Entities.Catalog;
+namespace VendlyServer.Domain.Entities.Catalogs;
 
-[Table("reviews", Schema = "catalog")]
+[Table("reviews", Schema = "catalogs")]
 public class Review : AuditableModelBase<long>
 {
     public long ProductId { get; set; }

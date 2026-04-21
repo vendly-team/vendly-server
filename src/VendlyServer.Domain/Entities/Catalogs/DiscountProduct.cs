@@ -1,9 +1,10 @@
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace VendlyServer.Domain.Entities.Catalog;
+namespace VendlyServer.Domain.Entities.Catalogs;
 
-[Table("discount_products", Schema = "catalog")]
-public class DiscountProduct
+[Table("discount_products", Schema = "catalogs")]
+public class DiscountProduct : AuditableModelBase<long>
 {
     public long DiscountId { get; set; }
 

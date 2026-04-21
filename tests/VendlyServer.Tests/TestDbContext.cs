@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using VendlyServer.Domain.Entities.Catalog;
+using VendlyServer.Domain.Entities.Catalogs;
 
 namespace VendlyServer.Tests;
 

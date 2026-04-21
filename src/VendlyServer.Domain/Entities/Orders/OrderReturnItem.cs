@@ -1,15 +1,11 @@
-using System.ComponentModel.DataAnnotations;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Orders;
 
 [Table("order_return_items", Schema = "orders")]
-public class OrderReturnItem
+public class OrderReturnItem : AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     public long ReturnId { get; set; }
 
     public long OrderItemId { get; set; }

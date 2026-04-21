@@ -1,8 +1,8 @@
+using System.Text.Json;
+using VendlyServer.Domain.Entities.Public;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
-using VendlyServer.Domain.Entities.Common;
-using VendlyServer.Domain.Entities.Public;
 
 namespace VendlyServer.Domain.Entities.Orders;
 

@@ -1,11 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Entities.Public;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace VendlyServer.Domain.Entities.Catalog;
+namespace VendlyServer.Domain.Entities.Catalogs;
 
-[Table("product_field_overrides", Schema = "catalog")]
+[Table("product_field_overrides", Schema = "catalogs")]
 public class ProductFieldOverride : AuditableModelBase<long>
 {
     public long ProductId { get; set; }

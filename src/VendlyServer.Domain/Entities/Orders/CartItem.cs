@@ -1,17 +1,13 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
-using VendlyServer.Domain.Entities.Catalog;
+using VendlyServer.Domain.Entities.Common;
+using VendlyServer.Domain.Entities.Catalogs;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Orders;
 
 [Table("cart_items", Schema = "orders")]
-public class CartItem
+public class CartItem : AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     public long CartId { get; set; }
 
     public long ProductId { get; set; }

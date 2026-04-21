@@ -1,16 +1,13 @@
+using System.Text.Json;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
 
-namespace VendlyServer.Domain.Entities.Catalog;
+namespace VendlyServer.Domain.Entities.Catalogs;
 
-[Table("product_images", Schema = "catalog")]
-public class ProductImage
+[Table("product_images", Schema = "catalogs")]
+public class ProductImage :  AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     public long ProductId { get; set; }
 
     [Required]

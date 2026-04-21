@@ -1,15 +1,12 @@
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Ref;
 
 [Table("bts_regions", Schema = "ref")]
-public class BtsRegionRef
+public class BtsRegionRef : AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     [Required]
     [MaxLength(10)]
     public required string Code { get; set; }

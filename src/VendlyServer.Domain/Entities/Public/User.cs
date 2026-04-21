@@ -1,7 +1,7 @@
+using VendlyServer.Domain.Enums;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using VendlyServer.Domain.Entities.Common;
-using VendlyServer.Domain.Enums;
 
 namespace VendlyServer.Domain.Entities.Public;
 

@@ -1,9 +1,9 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Entities.Public;
-using VendlyServer.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Orders;
 

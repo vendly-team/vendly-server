@@ -1,15 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using VendlyServer.Domain.Entities.Common;
 
 namespace VendlyServer.Domain.Entities.Ref;
 
 [Table("bts_package_types", Schema = "ref")]
-public class BtsPackageTypeRef
+public class BtsPackageTypeRef : AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     public int BtsId { get; set; }
 
     [Required]

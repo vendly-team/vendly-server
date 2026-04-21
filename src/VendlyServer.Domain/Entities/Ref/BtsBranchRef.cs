@@ -1,16 +1,13 @@
+using System.Text.Json;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
 
 namespace VendlyServer.Domain.Entities.Ref;
 
 [Table("bts_branches", Schema = "ref")]
-public class BtsBranchRef
+public class BtsBranchRef : AuditableModelBase<long>
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
-
     [Required]
     [MaxLength(10)]
     public required string RegionCode { get; set; }

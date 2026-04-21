@@ -1,12 +1,12 @@
+using System.Text.Json;
+using VendlyServer.Domain.Enums;
+using VendlyServer.Domain.Entities.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
-using VendlyServer.Domain.Entities.Common;
-using VendlyServer.Domain.Enums;
 
-namespace VendlyServer.Domain.Entities.Catalog;
+namespace VendlyServer.Domain.Entities.Catalogs;
 
-[Table("product_sync_meta", Schema = "catalog")]
+[Table("product_sync_meta", Schema = "catalogs")]
 public class ProductSyncMeta : AuditableModelBase<long>
 {
     public long ProductId { get; set; }

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using VendlyServer.Domain.Entities.Catalog;
+using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Domain.Entities.Logs;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Entities.Public;

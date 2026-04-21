@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Wishlist.Contracts;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Infrastructure.Persistence;
-using WishlistEntity = VendlyServer.Domain.Entities.Catalog.Wishlist;
+using WishlistEntity = VendlyServer.Domain.Entities.Catalogs.Wishlist;
 
 namespace VendlyServer.Application.Services.Wishlist;
 
