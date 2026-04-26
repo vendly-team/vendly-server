@@ -4,7 +4,7 @@ using VendlyServer.Domain.Entities.Common;
 namespace VendlyServer.Domain.Entities.Catalogs;
 
 // VariantOptionValue.cs — SKU <-> Option bog'lovchi jadval
-[Table("variant_options", Schema = "catalogs")]
+[Table("variant_option_values", Schema = "catalogs")]
 public class VariantOptionValue : AuditableModelBase<long>
 {
     public long ProductVariantId { get; set; }

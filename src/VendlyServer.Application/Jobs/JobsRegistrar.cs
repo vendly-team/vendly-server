@@ -8,9 +8,9 @@ public static class JobsRegistrar
     public static void RegisterRecurringJobs()
     {
         // BTS catalog sync — runs every Sunday at 03:00 UTC
-        RecurringJob.AddOrUpdate<IBtsCatalogSyncJob>(
-            "bts-catalog-sync",
-            job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Weekly(DayOfWeek.Sunday, 3));
+        // RecurringJob.AddOrUpdate<IBtsCatalogSyncJob>(
+        //     "bts-catalog-sync",
+        //     job => job.ExecuteAsync(CancellationToken.None),
+        //     Cron.Weekly(DayOfWeek.Sunday, 3));
     }
 }

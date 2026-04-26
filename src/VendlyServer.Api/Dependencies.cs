@@ -1,8 +1,11 @@
 using System.Reflection;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.EntityFrameworkCore;
 using VendlyServer.Api.Filters;
 using VendlyServer.Api.Middlewares;
+using VendlyServer.Infrastructure.Extensions.Seed;
+using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Api;
 
@@ -99,5 +102,36 @@ public static class Dependencies
         services.AddHangfireServer();
 
         return services;
+    }
+    
+    /// <summary>
+    /// Applies any pending database migrations to the application's database and seeds the database with initial data.
+    /// </summary>
+    /// <remarks>This method checks for pending migrations and applies them if any are found. After migrations
+    /// are applied, the database is seeded with initial data. Ensure that the application's database context is
+    /// properly configured before calling this method.</remarks>
+    /// <param name="app">The web application instance whose service provider is used to resolve the database context and apply
+    /// migrations.</param>
+    /// <returns>A task that represents the asynchronous operation of applying migrations and seeding the database.</returns>
+    public static async Task ApplyMigrationsAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Check and apply pending migrations
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+
+        if (pendingMigrations.Any())
+        {
+            Console.WriteLine("Applying pending migrations...");
+            await dbContext.Database.MigrateAsync();
+            Console.WriteLine("Migrations applied successfully.");
+        }
+        else
+        {
+            Console.WriteLine("No pending migrations found.");
+        }
+
+        await dbContext.SeedAsync();
     }
 }

@@ -5,6 +5,8 @@ using VendlyServer.Api.Filters;
 using VendlyServer.Application;
 using VendlyServer.Application.Jobs;
 using VendlyServer.Infrastructure;
+using VendlyServer.Infrastructure.Extensions.Seed;
+using VendlyServer.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,5 +55,13 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.MapControllers();
 
 JobsRegistrar.RegisterRecurringJobs();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.SeedAsync();
+}
+
+await app.ApplyMigrationsAsync();
 
 app.Run();

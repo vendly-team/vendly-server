@@ -14,16 +14,16 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "logs");
+                name: "ref");
 
             migrationBuilder.EnsureSchema(
-                name: "ref");
+                name: "logs");
 
             migrationBuilder.EnsureSchema(
                 name: "orders");
 
             migrationBuilder.EnsureSchema(
-                name: "catalog");
+                name: "catalogs");
 
             migrationBuilder.EnsureSchema(
                 name: "public");
@@ -43,7 +43,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     lat_long = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     working_hours = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -60,7 +63,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     region_code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -76,7 +82,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     bts_id = table.Column<int>(type: "integer", nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -92,7 +101,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     bts_id = table.Column<int>(type: "integer", nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -108,7 +120,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -129,7 +144,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     is_processed = table.Column<bool>(type: "boolean", nullable: false),
                     error = table.Column<string>(type: "text", nullable: true),
                     received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -138,14 +156,13 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "categories",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    slug = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    image_url = table.Column<string>(type: "text", nullable: true),
+                    image_url = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
@@ -169,7 +186,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     password_hash = table.Column<string>(type: "text", nullable: false),
-                    role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    role = table.Column<int>(type: "integer", nullable: false),
                     is_blocked = table.Column<bool>(type: "boolean", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -182,20 +199,18 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "discounts",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    type = table.Column<int>(type: "integer", nullable: false),
                     value = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
-                    scope = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    category_id = table.Column<long>(type: "bigint", nullable: true),
                     starts_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     ends_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
+                    category_id = table.Column<long>(type: "bigint", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -206,29 +221,22 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_discounts_categories_category_id",
                         column: x => x.category_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "categories",
                         principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
                 name: "products",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     category_id = table.Column<long>(type: "bigint", nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    slug = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    sku = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
-                    price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    sale_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
-                    sale_ends_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    stock = table.Column<int>(type: "integer", nullable: false),
-                    sync_source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    has_synced = table.Column<bool>(type: "boolean", nullable: false),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    sync_source = table.Column<int>(type: "integer", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
@@ -241,37 +249,42 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_products_categories_category_id",
                         column: x => x.category_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "categories",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "audit_logs",
-                schema: "logs",
+                name: "addresses",
+                schema: "ref",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<long>(type: "bigint", nullable: true),
-                    action = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    entity_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    entity_id = table.Column<long>(type: "bigint", nullable: false),
-                    old_value = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    new_value = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    ip_address = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    user_id = table.Column<long>(type: "bigint", nullable: false),
+                    label = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    city = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    district = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    street = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    house = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    extra = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    bts_city_code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_audit_logs", x => x.id);
+                    table.PrimaryKey("pk_addresses", x => x.id);
                     table.ForeignKey(
-                        name: "fk_audit_logs_users_user_id",
+                        name: "fk_addresses_users_user_id",
                         column: x => x.user_id,
                         principalSchema: "public",
                         principalTable: "users",
-                        principalColumn: "id");
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -301,39 +314,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "customer_addresses",
-                schema: "public",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<long>(type: "bigint", nullable: false),
-                    label = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    city = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    district = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    street = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    house = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    extra = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    bts_city_code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
-                    is_default = table.Column<bool>(type: "boolean", nullable: false),
-                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_customer_addresses", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_customer_addresses_users_user_id",
-                        column: x => x.user_id,
-                        principalSchema: "public",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "notifications",
                 schema: "logs",
                 columns: table => new
@@ -341,14 +321,16 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     user_id = table.Column<long>(type: "bigint", nullable: false),
-                    type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    channel = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    type = table.Column<int>(type: "integer", nullable: false),
+                    channel = table.Column<int>(type: "integer", nullable: false),
                     title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    body = table.Column<string>(type: "text", nullable: false),
+                    body = table.Column<string>(type: "text", nullable: true),
                     is_sent = table.Column<bool>(type: "boolean", nullable: false),
                     provider_response = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     sent_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -373,7 +355,9 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     token = table.Column<string>(type: "text", nullable: false),
                     expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     is_revoked = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -395,7 +379,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     total_processed = table.Column<int>(type: "integer", nullable: false),
                     created_count = table.Column<int>(type: "integer", nullable: false),
                     updated_count = table.Column<int>(type: "integer", nullable: false),
@@ -405,7 +389,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     triggered_by = table.Column<long>(type: "bigint", nullable: true),
                     duration_ms = table.Column<int>(type: "integer", nullable: true),
                     started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    finished_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    finished_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -427,7 +414,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     user_id = table.Column<long>(type: "bigint", nullable: false),
                     order_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     subtotal = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     delivery_cost = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     discount_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
@@ -445,7 +432,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     bts_last_status_code = table.Column<int>(type: "integer", nullable: true),
                     bts_last_status_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     bts_last_status_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    delivery_status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    delivery_status = table.Column<int>(type: "integer", nullable: false),
                     delivered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     discount_id = table.Column<long>(type: "bigint", nullable: true),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
@@ -459,7 +446,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_orders_discounts_discount_id",
                         column: x => x.discount_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "discounts",
                         principalColumn: "id");
                     table.ForeignKey(
@@ -473,11 +460,16 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "discount_products",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     discount_id = table.Column<long>(type: "bigint", nullable: false),
-                    product_id = table.Column<long>(type: "bigint", nullable: false)
+                    product_id = table.Column<long>(type: "bigint", nullable: false),
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -485,168 +477,70 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_discount_products_discounts_discount_id",
                         column: x => x.discount_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "discounts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_discount_products_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "product_field_overrides",
-                schema: "catalog",
+                name: "product_variants",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     product_id = table.Column<long>(type: "bigint", nullable: false),
-                    field_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    manual_value = table.Column<string>(type: "text", nullable: false),
-                    ext_value = table.Column<string>(type: "text", nullable: true),
-                    overridden_by = table.Column<long>(type: "bigint", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: true),
+                    price = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    quantity = table.Column<int>(type: "integer", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_product_field_overrides", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_product_field_overrides_products_product_id",
-                        column: x => x.product_id,
-                        principalSchema: "catalog",
-                        principalTable: "products",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_product_field_overrides_users_overridden_by",
-                        column: x => x.overridden_by,
-                        principalSchema: "public",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "product_images",
-                schema: "catalog",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
-                    url = table.Column<string>(type: "text", nullable: false),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    is_primary = table.Column<bool>(type: "boolean", nullable: false),
-                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_product_images", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_product_images_products_product_id",
-                        column: x => x.product_id,
-                        principalSchema: "catalog",
-                        principalTable: "products",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "product_measurements",
-                schema: "catalog",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
-                    weight_kg = table.Column<decimal>(type: "numeric(10,3)", precision: 10, scale: 3, nullable: false),
-                    length_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
-                    width_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
-                    height_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
-                    volume_cm3 = table.Column<decimal>(type: "numeric(14,2)", precision: 14, scale: 2, nullable: false),
-                    is_overridden = table.Column<bool>(type: "boolean", nullable: false),
+                    images = table.Column<string>(type: "jsonb", nullable: false),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_product_measurements", x => x.id);
+                    table.PrimaryKey("pk_product_variants", x => x.id);
                     table.ForeignKey(
-                        name: "fk_product_measurements_products_product_id",
+                        name: "fk_product_variants_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "product_specs",
-                schema: "catalog",
+                name: "variant_types",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     product_id = table.Column<long>(type: "bigint", nullable: false),
-                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_product_specs", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_product_specs_products_product_id",
-                        column: x => x.product_id,
-                        principalSchema: "catalog",
-                        principalTable: "products",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "product_sync_meta",
-                schema: "catalog",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
-                    external_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    external_source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    ext_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
-                    ext_stock = table.Column<int>(type: "integer", nullable: true),
-                    ext_weight_kg = table.Column<decimal>(type: "numeric(10,3)", precision: 10, scale: 3, nullable: true),
-                    ext_length_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    ext_width_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    ext_height_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    last_sync_status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    last_sync_error = table.Column<string>(type: "text", nullable: true),
-                    raw_payload = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    last_synced_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_order = table.Column<int>(type: "integer", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_product_sync_meta", x => x.id);
+                    table.PrimaryKey("pk_variant_types", x => x.id);
                     table.ForeignKey(
-                        name: "fk_product_sync_meta_products_product_id",
+                        name: "fk_variant_types_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -654,14 +548,16 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "wishlists",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     user_id = table.Column<long>(type: "bigint", nullable: false),
                     product_id = table.Column<long>(type: "bigint", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -669,7 +565,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_wishlists_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -694,7 +590,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     qty = table.Column<int>(type: "integer", nullable: false),
                     price_snapshot = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    added_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    added_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -709,7 +608,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_cart_items_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -724,7 +623,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     order_id = table.Column<long>(type: "bigint", nullable: false),
                     requested_by = table.Column<long>(type: "bigint", nullable: false),
-                    reason_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    reason_code = table.Column<int>(type: "integer", nullable: false),
                     reason_text = table.Column<string>(type: "text", nullable: true),
                     cancelled_by_role = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
@@ -785,7 +684,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_order_items_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id");
                 });
@@ -800,7 +699,9 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     order_id = table.Column<long>(type: "bigint", nullable: false),
                     admin_id = table.Column<long>(type: "bigint", nullable: false),
                     note = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -830,9 +731,9 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     order_id = table.Column<long>(type: "bigint", nullable: false),
                     requested_by = table.Column<long>(type: "bigint", nullable: false),
-                    reason_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    reason_code = table.Column<int>(type: "integer", nullable: false),
                     reason_text = table.Column<string>(type: "text", nullable: true),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     reviewed_by = table.Column<long>(type: "bigint", nullable: true),
                     review_note = table.Column<string>(type: "text", nullable: true),
                     reviewed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -867,30 +768,32 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "order_status_history",
+                name: "order_status_histories",
                 schema: "orders",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     order_id = table.Column<long>(type: "bigint", nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     note = table.Column<string>(type: "text", nullable: true),
                     changed_by = table.Column<long>(type: "bigint", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_order_status_history", x => x.id);
+                    table.PrimaryKey("pk_order_status_histories", x => x.id);
                     table.ForeignKey(
-                        name: "fk_order_status_history_orders_order_id",
+                        name: "fk_order_status_histories_orders_order_id",
                         column: x => x.order_id,
                         principalSchema: "orders",
                         principalTable: "orders",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_order_status_history_users_changed_by",
+                        name: "fk_order_status_histories_users_changed_by",
                         column: x => x.changed_by,
                         principalSchema: "public",
                         principalTable: "users",
@@ -905,9 +808,9 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     order_id = table.Column<long>(type: "bigint", nullable: false),
-                    provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    provider = table.Column<int>(type: "integer", nullable: false),
                     transaction_id = table.Column<string>(type: "text", nullable: true),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     provider_response = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     paid_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -929,7 +832,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateTable(
                 name: "reviews",
-                schema: "catalog",
+                schema: "catalogs",
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
@@ -938,9 +841,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     user_id = table.Column<long>(type: "bigint", nullable: false),
                     order_id = table.Column<long>(type: "bigint", nullable: false),
                     rating = table.Column<short>(type: "smallint", nullable: false),
-                    body = table.Column<string>(type: "text", nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
+                    feedback = table.Column<string>(type: "text", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -958,7 +859,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     table.ForeignKey(
                         name: "fk_reviews_products_product_id",
                         column: x => x.product_id,
-                        principalSchema: "catalog",
+                        principalSchema: "catalogs",
                         principalTable: "products",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -967,6 +868,63 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         column: x => x.user_id,
                         principalSchema: "public",
                         principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "product_measurements",
+                schema: "catalogs",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    product_variant_id = table.Column<long>(type: "bigint", nullable: false),
+                    weight_kg = table.Column<decimal>(type: "numeric(10,3)", precision: 10, scale: 3, nullable: true),
+                    length_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    width_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    height_cm = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    volume_cm3 = table.Column<decimal>(type: "numeric(14,2)", precision: 14, scale: 2, nullable: true),
+                    metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_product_measurements", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_product_measurements_product_variants_product_variant_id",
+                        column: x => x.product_variant_id,
+                        principalSchema: "catalogs",
+                        principalTable: "product_variants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "variant_options",
+                schema: "catalogs",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    variant_type_id = table.Column<long>(type: "bigint", nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    image_url = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    display_order = table.Column<int>(type: "integer", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_variant_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_variant_options_variant_types_variant_type_id",
+                        column: x => x.variant_type_id,
+                        principalSchema: "catalogs",
+                        principalTable: "variant_types",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -981,7 +939,10 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     return_id = table.Column<long>(type: "bigint", nullable: false),
                     order_item_id = table.Column<long>(type: "bigint", nullable: false),
                     qty = table.Column<int>(type: "integer", nullable: false),
-                    reason = table.Column<string>(type: "text", nullable: true)
+                    reason = table.Column<string>(type: "text", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1002,10 +963,42 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "variant_option_values",
+                schema: "catalogs",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    product_variant_id = table.Column<long>(type: "bigint", nullable: false),
+                    variant_option_id = table.Column<long>(type: "bigint", nullable: false),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_variant_option_values", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_variant_option_values_product_variants_product_variant_id",
+                        column: x => x.product_variant_id,
+                        principalSchema: "catalogs",
+                        principalTable: "product_variants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_variant_option_values_variant_options_variant_option_id",
+                        column: x => x.variant_option_id,
+                        principalSchema: "catalogs",
+                        principalTable: "variant_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
-                name: "ix_audit_logs_user_id",
-                schema: "logs",
-                table: "audit_logs",
+                name: "ix_addresses_user_id",
+                schema: "ref",
+                table: "addresses",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
@@ -1062,27 +1055,14 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_categories_slug",
-                schema: "catalog",
-                table: "categories",
-                column: "slug",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_customer_addresses_user_id",
-                schema: "public",
-                table: "customer_addresses",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_discount_products_product_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "discount_products",
                 column: "product_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_discounts_category_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "discounts",
                 column: "category_id");
 
@@ -1161,15 +1141,15 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 column: "reviewed_by");
 
             migrationBuilder.CreateIndex(
-                name: "ix_order_status_history_changed_by",
+                name: "ix_order_status_histories_changed_by",
                 schema: "orders",
-                table: "order_status_history",
+                table: "order_status_histories",
                 column: "changed_by");
 
             migrationBuilder.CreateIndex(
-                name: "ix_order_status_history_order_id",
+                name: "ix_order_status_histories_order_id",
                 schema: "orders",
-                table: "order_status_history",
+                table: "order_status_histories",
                 column: "order_id");
 
             migrationBuilder.CreateIndex(
@@ -1199,62 +1179,23 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_product_field_overrides_overridden_by",
-                schema: "catalog",
-                table: "product_field_overrides",
-                column: "overridden_by");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_product_field_overrides_product_id",
-                schema: "catalog",
-                table: "product_field_overrides",
-                column: "product_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_product_images_product_id",
-                schema: "catalog",
-                table: "product_images",
-                column: "product_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_product_measurements_product_id",
-                schema: "catalog",
+                name: "ix_product_measurements_product_variant_id",
+                schema: "catalogs",
                 table: "product_measurements",
-                column: "product_id",
+                column: "product_variant_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_product_specs_product_id",
-                schema: "catalog",
-                table: "product_specs",
+                name: "ix_product_variants_product_id",
+                schema: "catalogs",
+                table: "product_variants",
                 column: "product_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_product_sync_meta_product_id",
-                schema: "catalog",
-                table: "product_sync_meta",
-                column: "product_id",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_products_category_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "products",
                 column: "category_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_products_sku",
-                schema: "catalog",
-                table: "products",
-                column: "sku",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_products_slug",
-                schema: "catalog",
-                table: "products",
-                column: "slug",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_token",
@@ -1271,19 +1212,19 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_reviews_order_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "reviews",
                 column: "order_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_reviews_product_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "reviews",
                 column: "product_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_reviews_user_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "reviews",
                 column: "user_id");
 
@@ -1301,14 +1242,38 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_variant_option_values_product_variant_id",
+                schema: "catalogs",
+                table: "variant_option_values",
+                column: "product_variant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_variant_option_values_variant_option_id",
+                schema: "catalogs",
+                table: "variant_option_values",
+                column: "variant_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_variant_options_variant_type_id",
+                schema: "catalogs",
+                table: "variant_options",
+                column: "variant_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_variant_types_product_id",
+                schema: "catalogs",
+                table: "variant_types",
+                column: "product_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_wishlists_product_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "wishlists",
                 column: "product_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_wishlists_user_id_product_id",
-                schema: "catalog",
+                schema: "catalogs",
                 table: "wishlists",
                 columns: new[] { "user_id", "product_id" },
                 unique: true);
@@ -1318,8 +1283,8 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "audit_logs",
-                schema: "logs");
+                name: "addresses",
+                schema: "ref");
 
             migrationBuilder.DropTable(
                 name: "bts_branches",
@@ -1350,12 +1315,8 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "customer_addresses",
-                schema: "public");
-
-            migrationBuilder.DropTable(
                 name: "discount_products",
-                schema: "catalog");
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "notifications",
@@ -1374,7 +1335,7 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "order_status_history",
+                name: "order_status_histories",
                 schema: "orders");
 
             migrationBuilder.DropTable(
@@ -1382,24 +1343,8 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "product_field_overrides",
-                schema: "catalog");
-
-            migrationBuilder.DropTable(
-                name: "product_images",
-                schema: "catalog");
-
-            migrationBuilder.DropTable(
                 name: "product_measurements",
-                schema: "catalog");
-
-            migrationBuilder.DropTable(
-                name: "product_specs",
-                schema: "catalog");
-
-            migrationBuilder.DropTable(
-                name: "product_sync_meta",
-                schema: "catalog");
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "refresh_tokens",
@@ -1407,15 +1352,19 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "reviews",
-                schema: "catalog");
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "sync_logs",
                 schema: "logs");
 
             migrationBuilder.DropTable(
+                name: "variant_option_values",
+                schema: "catalogs");
+
+            migrationBuilder.DropTable(
                 name: "wishlists",
-                schema: "catalog");
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "carts",
@@ -1430,24 +1379,36 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "products",
-                schema: "catalog");
+                name: "product_variants",
+                schema: "catalogs");
+
+            migrationBuilder.DropTable(
+                name: "variant_options",
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "orders",
                 schema: "orders");
 
             migrationBuilder.DropTable(
+                name: "variant_types",
+                schema: "catalogs");
+
+            migrationBuilder.DropTable(
                 name: "discounts",
-                schema: "catalog");
+                schema: "catalogs");
 
             migrationBuilder.DropTable(
                 name: "users",
                 schema: "public");
 
             migrationBuilder.DropTable(
+                name: "products",
+                schema: "catalogs");
+
+            migrationBuilder.DropTable(
                 name: "categories",
-                schema: "catalog");
+                schema: "catalogs");
         }
     }
 }

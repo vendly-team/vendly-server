@@ -1,10 +1,10 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using VendlyServer.Infrastructure.Authentication;
-using VendlyServer.Infrastructure.Brokers.BtsExpress;
+using Microsoft.Extensions.Configuration;
 using VendlyServer.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
+using VendlyServer.Infrastructure.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using VendlyServer.Infrastructure.Brokers.BtsExpress;
 
 namespace VendlyServer.Infrastructure;
 
@@ -61,4 +61,6 @@ public static class Dependencies
 
         return services;
     }
+
+
 }

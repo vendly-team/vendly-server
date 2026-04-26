@@ -17,6 +17,8 @@ public class JwtBearerOptionsSetup(IOptions<JwtOptions> jwtOptions)
 
     public void Configure(string? name, JwtBearerOptions options)
     {
+        options.MapInboundClaims = false;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -26,7 +28,9 @@ public class JwtBearerOptionsSetup(IOptions<JwtOptions> jwtOptions)
             ValidIssuer = _jwtOptions.Issuer,
             ValidAudience = _jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_jwtOptions.SecretKey))
+                Encoding.UTF8.GetBytes(_jwtOptions.SecretKey)),
+            RoleClaimType = CustomClaims.Role,
+            NameClaimType = CustomClaims.Id
         };
     }
 }

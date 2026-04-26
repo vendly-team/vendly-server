@@ -1,5 +1,7 @@
 using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Entities.Common;
+using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Orders;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using VendlyServer.Domain.Entities.Ref;
@@ -33,4 +35,6 @@ public class User : AuditableModelBase<long>
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Address> Addresses { get; set; } = [];
+    public ICollection<Order> Orders { get; set; } = [];
+    public ICollection<Review> Reviews { get; set; } = [];
 }
