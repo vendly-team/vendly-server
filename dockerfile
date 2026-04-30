@@ -15,7 +15,7 @@ COPY src/ src/
 WORKDIR /src/src/VendlyServer.Api
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
