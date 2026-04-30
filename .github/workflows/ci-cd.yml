@@ -1,0 +1,182 @@
+name: vendly
+
+on:
+  push:
+    branches: [ main, staging ]
+
+env:
+  API_IMAGE_NAME: vendly
+  REPO_NAME: vendly-team/vendly
+  REGISTRY: ghcr.io
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "image_tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:${{ github.ref_name }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:buildcache,mode=max
+
+  deploy_staging:
+    if: github.ref == 'refs/heads/staging'
+    needs: build_and_push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy staging
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            IMAGE="${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:${{ needs.build_and_push.outputs.image_tag }}"
+
+            echo "${{ secrets.CICD_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
+
+            mkdir -p $HOME/vendly-staging
+
+            cat > $HOME/vendly-staging/docker-compose.yml << EOF
+            services:
+              vendly-staging:
+                image: ${IMAGE}
+                container_name: vendly-staging
+                restart: unless-stopped
+                ports:
+                  - "151:8080"
+                environment:
+                  - ASPNETCORE_ENVIRONMENT=Staging
+                extra_hosts:
+                  - "host.docker.internal:host-gateway"
+                networks:
+                  - vendly-staging-net
+
+              seq-staging:
+                image: datalust/seq:latest
+                container_name: vendly-seq-staging
+                restart: unless-stopped
+                ports:
+                  - "5342:5341"
+                  - "8083:80"
+                environment:
+                  - ACCEPT_EULA=Y
+                volumes:
+                  - seq-staging-data:/data
+                networks:
+                  - vendly-staging-net
+
+            networks:
+              vendly-staging-net:
+                driver: bridge
+
+            volumes:
+              seq-staging-data:
+            EOF
+
+            docker pull "$IMAGE"
+
+            cd $HOME/vendly-staging
+            docker compose down || true
+            docker compose up -d --remove-orphans
+
+            docker image prune -f
+
+  deploy_prod:
+    if: github.ref == 'refs/heads/main'
+    needs: build_and_push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy production
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            IMAGE="${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:${{ needs.build_and_push.outputs.image_tag }}"
+
+            echo "${{ secrets.CICD_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
+
+            mkdir -p $HOME/vendly-prod
+
+            cat > $HOME/vendly-prod/docker-compose.yml << EOF
+            services:
+              vendly-prod:
+                image: ${IMAGE}
+                container_name: vendly-prod
+                restart: unless-stopped
+                ports:
+                  - "150:8080"
+                environment:
+                  - ASPNETCORE_ENVIRONMENT=Production
+                extra_hosts:
+                  - "host.docker.internal:host-gateway"
+                networks:
+                  - vendly-prod-net
+
+              seq-prod:
+                image: datalust/seq:latest
+                container_name: vendly-seq-prod
+                restart: unless-stopped
+                ports:
+                  - "5341:5341"
+                  - "8082:80"
+                environment:
+                  - ACCEPT_EULA=Y
+                volumes:
+                  - seq-prod-data:/data
+                networks:
+                  - vendly-prod-net
+
+            networks:
+              vendly-prod-net:
+                driver: bridge
+
+            volumes:
+              seq-prod-data:
+            EOF
+
+            docker pull "$IMAGE"
+
+            cd $HOME/vendly-prod
+            docker compose down || true
+            docker compose up -d --remove-orphans
+
+            docker image prune -f
