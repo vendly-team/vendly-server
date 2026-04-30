@@ -17,9 +17,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 name: "ref");
 
             migrationBuilder.EnsureSchema(
-                name: "logs");
-
-            migrationBuilder.EnsureSchema(
                 name: "orders");
 
             migrationBuilder.EnsureSchema(
@@ -128,30 +125,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_bts_regions", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "bts_webhook_events",
-                schema: "logs",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    bts_order_id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status_code = table.Column<int>(type: "integer", nullable: false),
-                    status_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    raw_payload = table.Column<JsonDocument>(type: "jsonb", nullable: false),
-                    is_processed = table.Column<bool>(type: "boolean", nullable: false),
-                    error = table.Column<string>(type: "text", nullable: true),
-                    received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_bts_webhook_events", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -314,37 +287,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "notifications",
-                schema: "logs",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<long>(type: "bigint", nullable: false),
-                    type = table.Column<int>(type: "integer", nullable: false),
-                    channel = table.Column<int>(type: "integer", nullable: false),
-                    title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    body = table.Column<string>(type: "text", nullable: true),
-                    is_sent = table.Column<bool>(type: "boolean", nullable: false),
-                    provider_response = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    sent_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_notifications", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_notifications_users_user_id",
-                        column: x => x.user_id,
-                        principalSchema: "public",
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "refresh_tokens",
                 schema: "public",
                 columns: table => new
@@ -369,40 +311,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "sync_logs",
-                schema: "logs",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    total_processed = table.Column<int>(type: "integer", nullable: false),
-                    created_count = table.Column<int>(type: "integer", nullable: false),
-                    updated_count = table.Column<int>(type: "integer", nullable: false),
-                    skipped_count = table.Column<int>(type: "integer", nullable: false),
-                    error_count = table.Column<int>(type: "integer", nullable: false),
-                    error_detail = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    triggered_by = table.Column<long>(type: "bigint", nullable: true),
-                    duration_ms = table.Column<int>(type: "integer", nullable: true),
-                    started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    finished_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_sync_logs", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_sync_logs_users_triggered_by",
-                        column: x => x.triggered_by,
-                        principalSchema: "public",
-                        principalTable: "users",
-                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1067,12 +975,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 column: "category_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_notifications_user_id",
-                schema: "logs",
-                table: "notifications",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_order_cancellations_order_id",
                 schema: "orders",
                 table: "order_cancellations",
@@ -1229,12 +1131,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_sync_logs_triggered_by",
-                schema: "logs",
-                table: "sync_logs",
-                column: "triggered_by");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_users_phone",
                 schema: "public",
                 table: "users",
@@ -1307,20 +1203,12 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                 schema: "ref");
 
             migrationBuilder.DropTable(
-                name: "bts_webhook_events",
-                schema: "logs");
-
-            migrationBuilder.DropTable(
                 name: "cart_items",
                 schema: "orders");
 
             migrationBuilder.DropTable(
                 name: "discount_products",
                 schema: "catalogs");
-
-            migrationBuilder.DropTable(
-                name: "notifications",
-                schema: "logs");
 
             migrationBuilder.DropTable(
                 name: "order_cancellations",
@@ -1353,10 +1241,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
             migrationBuilder.DropTable(
                 name: "reviews",
                 schema: "catalogs");
-
-            migrationBuilder.DropTable(
-                name: "sync_logs",
-                schema: "logs");
 
             migrationBuilder.DropTable(
                 name: "variant_option_values",
