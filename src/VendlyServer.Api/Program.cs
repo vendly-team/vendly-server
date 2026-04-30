@@ -18,6 +18,8 @@ builder.Services
     .ConfigureCors()
     .ConfigureHangfire(builder.Configuration);
 
+builder.ConfigureHostConfigurations();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

@@ -103,7 +103,22 @@ public static class Dependencies
 
         return services;
     }
-    
+
+    public static WebApplicationBuilder ConfigureHostConfigurations(this WebApplicationBuilder builder)
+    {
+        _ = builder.Configuration.AddJsonFile(
+            Path.Join(AppContext.BaseDirectory,
+                $"appsettings.{builder.Environment.EnvironmentName}.json"),
+            optional: false);
+        _ = builder.Configuration.AddJsonFile(
+            Path.Join(AppContext.BaseDirectory,
+                $"appsettings.json"),
+            optional: false);
+        builder.Configuration.AddEnvironmentVariables();
+
+        return builder;
+    }
+
     /// <summary>
     /// Applies any pending database migrations to the application's database and seeds the database with initial data.
     /// </summary>
