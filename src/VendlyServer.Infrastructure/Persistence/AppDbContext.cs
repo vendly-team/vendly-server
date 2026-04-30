@@ -1,6 +1,5 @@
 using System.Text.Json;
 using VendlyServer.Domain.Entities.Catalogs;
-using VendlyServer.Domain.Entities.Logs;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Entities.Public;
 using VendlyServer.Domain.Entities.Ref;
@@ -50,9 +49,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Address> Addresses { get; set; }
 
     // logs
-    public DbSet<SyncLog> SyncLogs { get; set; }
-    public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
-    public DbSet<NotificationLog> NotificationLogs { get; set; }
+    //public DbSet<SyncLog> SyncLogs { get; set; }
+    //public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
+    //public DbSet<NotificationLog> NotificationLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -174,14 +173,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BtsBranchRef>()
             .Property(x => x.WorkingHours).HasColumnType("jsonb");
 
-        modelBuilder.Entity<SyncLog>()
-            .Property(x => x.ErrorDetail).HasColumnType("jsonb");
+        //modelBuilder.Entity<SyncLog>()
+        //    .Property(x => x.ErrorDetail).HasColumnType("jsonb");
 
-        modelBuilder.Entity<BtsWebhookEvent>()
-            .Property(x => x.RawPayload).HasColumnType("jsonb");
+        //modelBuilder.Entity<BtsWebhookEvent>()
+        //    .Property(x => x.RawPayload).HasColumnType("jsonb");
 
-        modelBuilder.Entity<NotificationLog>()
-            .Property(x => x.ProviderResponse).HasColumnType("jsonb");
+        //modelBuilder.Entity<NotificationLog>()
+        //    .Property(x => x.ProviderResponse).HasColumnType("jsonb");
 
         // Value converters for JsonDocument when using non-PostgreSQL providers (e.g. InMemory in tests)
         if (Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
