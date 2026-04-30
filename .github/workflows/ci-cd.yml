@@ -132,7 +132,7 @@ jobs:
 
             IMAGE="${{ env.REGISTRY }}/${{ env.REPO_NAME }}/${{ env.API_IMAGE_NAME }}:${{ needs.build_and_push.outputs.image_tag }}"
 
-            echo "${{ secrets.CICD_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
+            echo "${{ secrets.GH_TOKEN  }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
 
             mkdir -p $HOME/vendly-prod
 
