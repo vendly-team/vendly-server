@@ -94,6 +94,7 @@ jobs:
                   - "8083:80"
                 environment:
                   - ACCEPT_EULA=Y
+                  - SEQ_FIRSTRUN_ADMINPASSWORD=Vendly@SeqStage2026!
                 volumes:
                   - seq-staging-data:/data
                 networks:
@@ -160,6 +161,7 @@ jobs:
                   - "8082:80"
                 environment:
                   - ACCEPT_EULA=Y
+                  - SEQ_FIRSTRUN_ADMINPASSWORD=Vendly@SeqProd2026!
                 volumes:
                   - seq-prod-data:/data
                 networks:
