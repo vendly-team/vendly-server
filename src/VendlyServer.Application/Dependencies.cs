@@ -1,5 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Minio;
 using VendlyServer.Application.Jobs.BtsCatalog;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.BtsRef;
@@ -34,7 +36,23 @@ public static class Dependencies
     private static IServiceCollection ConfigureStorage(this IServiceCollection services)
     {
         services.ConfigureOptions<StorageOptionsSetup>();
-        services.AddScoped<IStorageService, LocalStorageService>();
+        services.ConfigureOptions<MinioOptionsSetup>();
+
+        services.AddSingleton<IMinioClient>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<MinioOptions>>().Value;
+
+            var builder = new MinioClient()
+                .WithEndpoint(opts.Endpoint)
+                .WithCredentials(opts.AccessKey, opts.SecretKey);
+
+            if (opts.UseSsl)
+                builder = builder.WithSSL();
+
+            return builder.Build();
+        });
+
+        services.AddScoped<IStorageService, MinioStorageService>();
         return services;
     }
 }
