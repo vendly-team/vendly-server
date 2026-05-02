@@ -55,12 +55,41 @@ public sealed class TelegramUpdateHandler(
         }
 
         var limit = Math.Max(1, _options.InlineResultLimit);
-        var results = (result.Data ?? [])
+        var products = (result.Data ?? [])
             .Take(limit)
+            .ToList();
+
+        logger.LogInformation(
+            "Telegram inline query {InlineQueryId} searched {Query} and found {ProductCount} products.",
+            inlineQuery.Id,
+            query,
+            products.Count);
+
+        var results = products
             .Select(BuildInlineResult)
             .ToList();
 
-        await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
+        try
+        {
+            await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
+        }
+        catch (HttpRequestException ex) when (results.Any(IsPhotoResult))
+        {
+            logger.LogWarning(
+                ex,
+                "Telegram photo inline result failed for query {Query}. Retrying with article results.",
+                query);
+
+            var fallbackResults = products
+                .Select(BuildArticleResult)
+                .ToList();
+
+            await botClient.AnswerInlineQueryAsync(
+                inlineQuery.Id,
+                fallbackResults,
+                EmptyQueryCacheTimeSeconds,
+                cancellationToken);
+        }
     }
 
     private async Task HandleMessageAsync(TelegramMessage message, CancellationToken cancellationToken)
@@ -80,9 +109,27 @@ public sealed class TelegramUpdateHandler(
     private Dictionary<string, object?> BuildInlineResult(ProductSearchResponse product)
     {
         var imageUrl = ResolvePublicUrl(product.Images.FirstOrDefault());
-        return string.IsNullOrWhiteSpace(imageUrl)
+        return string.IsNullOrWhiteSpace(imageUrl) || !IsTelegramFetchableImageUrl(imageUrl)
             ? BuildArticleResult(product)
             : BuildPhotoResult(product, imageUrl);
+    }
+
+    private static bool IsPhotoResult(Dictionary<string, object?> result)
+    {
+        return result.TryGetValue("type", out var type) &&
+               string.Equals(type?.ToString(), "photo", StringComparison.Ordinal);
+    }
+
+    private static bool IsTelegramFetchableImageUrl(string imageUrl)
+    {
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+            return false;
+
+        if (uri.Scheme is not ("http" or "https"))
+            return false;
+
+        return !uri.IsLoopback &&
+               !string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
     }
 
     private Dictionary<string, object?> BuildPhotoResult(ProductSearchResponse product, string imageUrl)
