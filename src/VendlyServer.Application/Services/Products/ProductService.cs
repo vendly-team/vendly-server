@@ -45,6 +45,8 @@ public class ProductService(
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 2)
             return new List<ProductSearchResponse>();
 
+        var clientBaseUrl = (_clientOptions.BaseUrl ?? string.Empty).TrimEnd('/');
+
         var products = await dbContext.Products
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
@@ -69,7 +71,7 @@ public class ProductService(
                     .Distinct()
                     .ToList(),
                 p.Variants.Any(v => !v.IsDeleted && v.IsActive && v.Quantity > 0),
-                BuildRedirectUrl(p.Name, p.Id)))
+                BuildRedirectUrl(p.Name, p.Id, clientBaseUrl)))
             .ToListAsync(ct);
 
         return products;
@@ -439,10 +441,9 @@ public class ProductService(
         return result;
     }
 
-    private string BuildRedirectUrl(string name, long id)
+    private static string BuildRedirectUrl(string name, long id, string baseUrl)
     {
         var slug = CreateProductSlug(name, id);
-        var baseUrl = (_clientOptions.BaseUrl ?? string.Empty).TrimEnd('/');
 
         return string.IsNullOrWhiteSpace(baseUrl)
             ? $"/product/{slug}"
