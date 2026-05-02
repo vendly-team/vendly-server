@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storage;
@@ -23,7 +25,11 @@ public class ProductServiceTests : IDisposable
             .Options;
 
         _db = new AppDbContext(options);
-        _service = new ProductService(_db, new StubStorageService(), NullLogger<ProductService>.Instance);
+        _service = new ProductService(
+            _db,
+            new StubStorageService(),
+            NullLogger<ProductService>.Instance,
+            Options.Create(new ClientOptions { BaseUrl = "https://client.example.com" }));
 
         // Seed category
         _db.Categories.AddRange(
@@ -55,7 +61,11 @@ public class ProductServiceTests : IDisposable
 
         // Seed a variant for product 1
         _db.ProductVariants.Add(
-            new ProductVariant { Id = 1, ProductId = 1, Name = "Red / S", Price = 99.99m, Quantity = 10, IsActive = true, Images = new List<string>() }
+            new ProductVariant { Id = 1, ProductId = 1, Name = "Red / S", Price = 99.99m, Quantity = 10, IsActive = true, Images = new List<string> { "phone-red.jpg" } }
+        );
+
+        _db.ProductVariants.Add(
+            new ProductVariant { Id = 2, ProductId = 2, Name = "Tablet / 64GB", Price = 149.99m, Quantity = 0, IsActive = true, Images = new List<string> { "tablet.jpg" } }
         );
 
         _db.SaveChanges();
@@ -80,6 +90,30 @@ public class ProductServiceTests : IDisposable
 
         Assert.True(result.IsSuccess);
         Assert.All(result.Data!, p => Assert.NotEmpty(p.CategoryName));
+    }
+
+    [Fact]
+    public async Task Search_ReturnsMatchedProducts_WithStorefrontFields()
+    {
+        var result = await _service.SearchAsync("pho");
+
+        Assert.True(result.IsSuccess);
+        var item = Assert.Single(result.Data!);
+        Assert.Equal("Phone", item.Name);
+        Assert.Equal(99.99m, item.Price);
+        Assert.Equal(1, item.SkuCount);
+        Assert.True(item.IsAvailableForSale);
+        Assert.Contains("phone-red.jpg", item.Images);
+        Assert.Equal("https://client.example.com/product/phone-1", item.RedirectUrl);
+    }
+
+    [Fact]
+    public async Task Search_ReturnsEmpty_WhenQueryIsTooShort()
+    {
+        var result = await _service.SearchAsync("p");
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Data!);
     }
 
     // ── GetByIdAsync ──────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storage;
 using VendlyServer.Domain.Abstractions;
@@ -11,8 +12,11 @@ namespace VendlyServer.Application.Services.Products;
 public class ProductService(
     AppDbContext dbContext,
     IStorageService storageService,
-    ILogger<ProductService> logger) : IProductService
+    ILogger<ProductService> logger,
+    IOptions<ClientOptions> clientOptions) : IProductService
 {
+    private readonly ClientOptions _clientOptions = clientOptions.Value;
+
     public async Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default)
     {
         var products = await dbContext.Products
@@ -29,6 +33,43 @@ public class ProductService(
                 p.Variants.Count(v => !v.IsDeleted),
                 p.CreatedAt,
                 p.UpdatedAt))
+            .ToListAsync(ct);
+
+        return products;
+    }
+
+    public async Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        var normalizedQuery = query.Trim().ToLower();
+
+        if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 2)
+            return new List<ProductSearchResponse>();
+
+        var products = await dbContext.Products
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted && p.IsActive)
+            .Where(p =>
+                p.Name.ToLower().Contains(normalizedQuery) ||
+                (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
+                p.Category.Name.ToLower().Contains(normalizedQuery) ||
+                p.Variants.Any(v =>
+                    !v.IsDeleted &&
+                    ((v.Name != null && v.Name.ToLower().Contains(normalizedQuery)))))
+            .Select(p => new ProductSearchResponse(
+                p.Id,
+                p.Name,
+                p.Variants
+                    .Where(v => !v.IsDeleted && v.IsActive)
+                    .Select(v => (decimal?)v.Price)
+                    .Min() ?? 0m,
+                p.Variants.Count(v => !v.IsDeleted),
+                p.Variants
+                    .Where(v => !v.IsDeleted && v.IsActive)
+                    .SelectMany(v => v.Images)
+                    .Distinct()
+                    .ToList(),
+                p.Variants.Any(v => !v.IsDeleted && v.IsActive && v.Quantity > 0),
+                BuildRedirectUrl(p.Name, p.Id)))
             .ToListAsync(ct);
 
         return products;
@@ -396,6 +437,35 @@ public class ProductService(
         }
 
         return result;
+    }
+
+    private string BuildRedirectUrl(string name, long id)
+    {
+        var slug = CreateProductSlug(name, id);
+        var baseUrl = (_clientOptions.BaseUrl ?? string.Empty).TrimEnd('/');
+
+        return string.IsNullOrWhiteSpace(baseUrl)
+            ? $"/product/{slug}"
+            : $"{baseUrl}/product/{slug}";
+    }
+
+    private static string CreateProductSlug(string name, long id)
+    {
+        var normalized = name.Trim().ToLowerInvariant();
+        var chars = normalized
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+            .ToArray();
+
+        var slug = new string(chars);
+        while (slug.Contains("--", StringComparison.Ordinal))
+            slug = slug.Replace("--", "-", StringComparison.Ordinal);
+
+        slug = slug.Trim('-');
+
+        if (string.IsNullOrWhiteSpace(slug))
+            slug = "product";
+
+        return $"{slug}-{id}";
     }
 
     private async Task TryDeleteFileAsync(string fileUrl)

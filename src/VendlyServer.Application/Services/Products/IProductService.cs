@@ -6,6 +6,7 @@ namespace VendlyServer.Application.Services.Products;
 public interface IProductService
 {
     Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default);
+    Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default);
     Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default);
     Task<Result<long>> CreateAsync(CreateProductRequest request, CancellationToken ct = default);
     Task<Result> UpdateAsync(long id, UpdateProductRequest request, CancellationToken ct = default);
