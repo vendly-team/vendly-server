@@ -67,16 +67,19 @@ public static class Dependencies
         return services;
     }
 
-    public static IServiceCollection ConfigureCors(this IServiceCollection services)
+    public static IServiceCollection ConfigureCors(
+        this IServiceCollection services, IConfiguration configuration)
     {
+        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
         services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy
-                    .AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader();
+                if (allowedOrigins is { Length: > 0 })
+                    policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader();
+                else
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
             });
         });
 
