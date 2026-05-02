@@ -54,7 +54,11 @@ public class AuthController(IAuthService authService) : AuthorizedController
         return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
     }
 
-    /// <summary>Get the currently authenticated user's profile.</summary>
+    /// <summary>
+    /// Get lightweight auth identity (id, name, phone, role) for the current user.
+    /// Use this to hydrate client auth state after login or token refresh.
+    /// For the full profile including orders and reviews, use GET /api/me.
+    /// </summary>
     [HttpGet("me")]
     public async Task<IResult> GetMeAsync(CancellationToken cancellationToken = default)
     {

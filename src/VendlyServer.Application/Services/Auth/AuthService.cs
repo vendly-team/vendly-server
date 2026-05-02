@@ -62,6 +62,9 @@ public class AuthService(
         if (stored is null || stored.IsRevoked || stored.ExpiresAt < DateTime.UtcNow)
             return AuthErrors.InvalidRefreshToken;
 
+        if (stored.User.IsDeleted)
+            return AuthErrors.InvalidRefreshToken;
+
         if (stored.User.IsBlocked)
             return AuthErrors.UserBlocked;
 
