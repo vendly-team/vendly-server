@@ -64,6 +64,6 @@ using (var scope = app.Services.CreateScope())
     await dbContext.SeedAsync();
 }
 
-await app.ApplyMigrationsAsync();
+// await app.ApplyMigrationsAsync();
 
 app.Run();
