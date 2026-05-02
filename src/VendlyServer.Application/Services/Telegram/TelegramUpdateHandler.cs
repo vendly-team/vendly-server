@@ -9,6 +9,7 @@ namespace VendlyServer.Application.Services.Telegram;
 
 public sealed class TelegramUpdateHandler(
     ITelegramBotClient botClient,
+    ITelegramImageUrlValidator imageUrlValidator,
     IProductService productService,
     IOptions<TelegramBotOptions> options,
     ILogger<TelegramUpdateHandler> logger) : ITelegramUpdateHandler
@@ -65,9 +66,9 @@ public sealed class TelegramUpdateHandler(
             query,
             products.Count);
 
-        var results = products
-            .Select(BuildInlineResult)
-            .ToList();
+        var results = new List<Dictionary<string, object?>>();
+        foreach (var product in products)
+            results.Add(await BuildInlineResultAsync(product, cancellationToken));
 
         await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
     }
@@ -86,10 +87,34 @@ public sealed class TelegramUpdateHandler(
         }
     }
 
-    private Dictionary<string, object?> BuildInlineResult(ProductSearchResponse product)
+    private async Task<Dictionary<string, object?>> BuildInlineResultAsync(
+        ProductSearchResponse product,
+        CancellationToken cancellationToken)
     {
-        var imageUrl = ResolvePublicUrl(product.Images.FirstOrDefault());
+        var imageUrl = await SelectTelegramImageUrlAsync(product.Images, cancellationToken);
         return BuildArticleResult(product, imageUrl);
+    }
+
+    private async Task<string?> SelectTelegramImageUrlAsync(
+        IReadOnlyCollection<string> imageUrls,
+        CancellationToken cancellationToken)
+    {
+        string? firstFetchableImageUrl = null;
+
+        foreach (var imageUrl in imageUrls)
+        {
+            var resolvedImageUrl = ResolvePublicUrl(imageUrl);
+            if (string.IsNullOrWhiteSpace(resolvedImageUrl) ||
+                !IsTelegramFetchableImageUrl(resolvedImageUrl))
+                continue;
+
+            firstFetchableImageUrl ??= resolvedImageUrl;
+
+            if (await imageUrlValidator.IsValidThumbnailAsync(resolvedImageUrl, cancellationToken))
+                return resolvedImageUrl;
+        }
+
+        return firstFetchableImageUrl;
     }
 
     private static bool IsTelegramFetchableImageUrl(string imageUrl)

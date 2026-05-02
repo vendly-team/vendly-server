@@ -81,6 +81,11 @@ public static class Dependencies
     {
         services.ConfigureOptions<TelegramBotOptionsSetup>();
 
+        services.AddHttpClient<ITelegramImageUrlValidator, TelegramImageUrlValidator>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(2);
+        });
+
         services.AddHttpClient<ITelegramBotClient, TelegramBotClient>((sp, client) =>
         {
             var opts = sp.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
