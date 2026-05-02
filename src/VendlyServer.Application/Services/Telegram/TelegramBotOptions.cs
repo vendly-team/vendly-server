@@ -10,7 +10,7 @@ public sealed class TelegramBotOptions
     public string PublicBaseUrl { get; set; } = string.Empty;
     public string WebhookSecretToken { get; set; } = string.Empty;
     public long[] AdminChatIds { get; set; } = [];
-    public int InlineResultLimit { get; set; } = 10;
+    public int InlineResultLimit { get; set; } = 5;
 }
 
 public sealed class TelegramBotOptionsSetup(IConfiguration configuration) : IConfigureOptions<TelegramBotOptions>

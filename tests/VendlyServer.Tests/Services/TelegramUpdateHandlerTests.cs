@@ -19,6 +19,7 @@ public class TelegramUpdateHandlerTests
     {
         _handler = new TelegramUpdateHandler(
             _botClient,
+            new FakeTelegramImageUrlValidator(),
             _productService,
             Options.Create(new TelegramBotOptions
             {
@@ -27,6 +28,40 @@ public class TelegramUpdateHandlerTests
                 InlineResultLimit = 10
             }),
             NullLogger<TelegramUpdateHandler>.Instance);
+    }
+
+    [Fact]
+    public async Task HandleAsync_UsesFirstValidTelegramThumbnail_WhenFirstImageIsTooLarge()
+    {
+        var largeImage = "https://files.vendly.uz/large.png";
+        var validImage = "https://files.vendly.uz/valid.png";
+        _productService.SearchResult = Result<List<ProductSearchResponse>>.Success(
+        [
+            new(3, "Samsung Phone", 16_499_000m, 2, [largeImage, validImage], true, "https://vendly.uz/product/samsung-phone-3")
+        ]);
+
+        var handler = new TelegramUpdateHandler(
+            _botClient,
+            new FakeTelegramImageUrlValidator([validImage]),
+            _productService,
+            Options.Create(new TelegramBotOptions
+            {
+                Enabled = true,
+                PublicBaseUrl = "https://api.vendly.uz",
+                InlineResultLimit = 10
+            }),
+            NullLogger<TelegramUpdateHandler>.Instance);
+
+        await handler.HandleAsync(new TelegramUpdate
+        {
+            InlineQuery = new TelegramInlineQuery { Id = "query-4", Query = "samsung" }
+        });
+
+        var result = Assert.Single(_botClient.AnsweredResults);
+        Assert.Equal(validImage, result["thumbnail_url"]);
+        var messageContent = Assert.IsType<TelegramInputTextMessageContent>(result["input_message_content"]);
+        Assert.Equal(validImage, messageContent.LinkPreviewOptions!.Url);
+        Assert.DoesNotContain(largeImage, messageContent.MessageText);
     }
 
     [Fact]
@@ -125,6 +160,16 @@ public class TelegramUpdateHandlerTests
             AnsweredInlineQueryId = inlineQueryId;
             AnsweredResults = results.ToList();
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeTelegramImageUrlValidator(IReadOnlyCollection<string>? validUrls = null) : ITelegramImageUrlValidator
+    {
+        private readonly IReadOnlyCollection<string>? _validUrls = validUrls;
+
+        public Task<bool> IsValidThumbnailAsync(string imageUrl, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_validUrls is null || _validUrls.Contains(imageUrl));
         }
     }
 
