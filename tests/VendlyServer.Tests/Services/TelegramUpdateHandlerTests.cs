@@ -30,7 +30,7 @@ public class TelegramUpdateHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_MapsProductWithImage_ToPhotoInlineResult()
+    public async Task HandleAsync_MapsProductWithImage_ToArticleInlineResultWithThumbnail()
     {
         _productService.SearchResult = Result<List<ProductSearchResponse>>.Success(
         [
@@ -44,12 +44,13 @@ public class TelegramUpdateHandlerTests
 
         Assert.Equal("query-1", _botClient.AnsweredInlineQueryId);
         var result = Assert.Single(_botClient.AnsweredResults);
-        Assert.Equal("photo", result["type"]);
-        Assert.Equal("Samsung TV", result["title"]);
+        Assert.Equal("article", result["type"]);
+        Assert.Equal("🛍️ Samsung TV", result["title"]);
         Assert.Contains("2 500 000", result["description"]!.ToString());
         Assert.Contains("Sotuvda bor", result["description"]!.ToString());
-        Assert.Equal("https://files.vendly.uz/tv.jpg", result["photo_url"]);
+        Assert.Equal("https://files.vendly.uz/tv.jpg", result["thumbnail_url"]);
         Assert.Contains("Mahsulotni ochish", result["reply_markup"]!.ToString());
+        Assert.Contains("input_message_content", string.Join(',', result.Keys));
     }
 
     [Fact]
@@ -67,7 +68,7 @@ public class TelegramUpdateHandlerTests
 
         var result = Assert.Single(_botClient.AnsweredResults);
         Assert.Equal("article", result["type"]);
-        Assert.Equal("Bosch Washer", result["title"]);
+        Assert.Equal("🛍️ Bosch Washer", result["title"]);
         Assert.Contains("Sotuvda yo'q", result["description"]!.ToString());
         Assert.Contains("input_message_content", string.Join(',', result.Keys));
     }
@@ -98,6 +99,7 @@ public class TelegramUpdateHandlerTests
 
         Assert.Equal(123, _botClient.SentMessages.Single().ChatId);
         Assert.Contains("Assalomu alaykum", _botClient.SentMessages.Single().Text);
+        Assert.Contains("🔎", _botClient.SentMessages.Single().Text);
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
