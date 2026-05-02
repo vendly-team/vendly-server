@@ -9,4 +9,5 @@ public interface IAuthService
     Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default);
     Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
     Task<Result> LogoutAsync(string refreshToken, CancellationToken cancellationToken = default);
+    Task<Result<UserInfo>> GetMeAsync(long userId, CancellationToken cancellationToken = default);
 }
