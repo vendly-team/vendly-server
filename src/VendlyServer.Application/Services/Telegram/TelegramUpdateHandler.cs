@@ -69,27 +69,7 @@ public sealed class TelegramUpdateHandler(
             .Select(BuildInlineResult)
             .ToList();
 
-        try
-        {
-            await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
-        }
-        catch (HttpRequestException ex) when (results.Any(IsPhotoResult))
-        {
-            logger.LogWarning(
-                ex,
-                "Telegram photo inline result failed for query {Query}. Retrying with article results.",
-                query);
-
-            var fallbackResults = products
-                .Select(BuildArticleResult)
-                .ToList();
-
-            await botClient.AnswerInlineQueryAsync(
-                inlineQuery.Id,
-                fallbackResults,
-                EmptyQueryCacheTimeSeconds,
-                cancellationToken);
-        }
+        await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
     }
 
     private async Task HandleMessageAsync(TelegramMessage message, CancellationToken cancellationToken)
@@ -101,7 +81,7 @@ public sealed class TelegramUpdateHandler(
         {
             await botClient.SendMessageAsync(
                 message.Chat.Id,
-                "Assalomu alaykum! Mahsulot qidirish uchun chatda bot username'ini yozib, keyin mahsulot nomini kiriting.",
+                "Assalomu alaykum! 👋\n\n🔎 Mahsulot qidirish uchun istalgan chatda bot username'ini yozing va yoniga mahsulot nomini kiriting.\n\nMasalan: <code>@bot kir yuvish mashinasi</code>",
                 cancellationToken);
         }
     }
@@ -109,15 +89,7 @@ public sealed class TelegramUpdateHandler(
     private Dictionary<string, object?> BuildInlineResult(ProductSearchResponse product)
     {
         var imageUrl = ResolvePublicUrl(product.Images.FirstOrDefault());
-        return string.IsNullOrWhiteSpace(imageUrl) || !IsTelegramFetchableImageUrl(imageUrl)
-            ? BuildArticleResult(product)
-            : BuildPhotoResult(product, imageUrl);
-    }
-
-    private static bool IsPhotoResult(Dictionary<string, object?> result)
-    {
-        return result.TryGetValue("type", out var type) &&
-               string.Equals(type?.ToString(), "photo", StringComparison.Ordinal);
+        return BuildArticleResult(product, imageUrl);
     }
 
     private static bool IsTelegramFetchableImageUrl(string imageUrl)
@@ -132,53 +104,56 @@ public sealed class TelegramUpdateHandler(
                !string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
     }
 
-    private Dictionary<string, object?> BuildPhotoResult(ProductSearchResponse product, string imageUrl)
+    private Dictionary<string, object?> BuildArticleResult(ProductSearchResponse product, string? imageUrl = null)
     {
-        return new Dictionary<string, object?>
-        {
-            ["type"] = "photo",
-            ["id"] = product.Id.ToString(CultureInfo.InvariantCulture),
-            ["photo_url"] = imageUrl,
-            ["thumbnail_url"] = imageUrl,
-            ["title"] = product.Name,
-            ["description"] = BuildDescription(product),
-            ["caption"] = BuildProductMessage(product),
-            ["parse_mode"] = "HTML",
-            ["reply_markup"] = BuildOpenProductKeyboard(product.RedirectUrl)
-        };
-    }
-
-    private Dictionary<string, object?> BuildArticleResult(ProductSearchResponse product)
-    {
-        return new Dictionary<string, object?>
+        var result = new Dictionary<string, object?>
         {
             ["type"] = "article",
             ["id"] = product.Id.ToString(CultureInfo.InvariantCulture),
-            ["title"] = product.Name,
+            ["title"] = $"🛍️ {product.Name}",
             ["description"] = BuildDescription(product),
             ["input_message_content"] = new TelegramInputTextMessageContent
             {
-                MessageText = BuildProductMessage(product)
+                MessageText = BuildProductMessage(product, imageUrl),
+                DisableWebPagePreview = string.IsNullOrWhiteSpace(imageUrl),
+                LinkPreviewOptions = string.IsNullOrWhiteSpace(imageUrl)
+                    ? null
+                    : new TelegramLinkPreviewOptions { Url = imageUrl }
             },
             ["reply_markup"] = BuildOpenProductKeyboard(product.RedirectUrl)
         };
+
+        if (!string.IsNullOrWhiteSpace(imageUrl) && IsTelegramFetchableImageUrl(imageUrl))
+        {
+            result["thumbnail_url"] = imageUrl;
+            result["thumbnail_width"] = 160;
+            result["thumbnail_height"] = 160;
+        }
+
+        return result;
     }
 
     private static string BuildDescription(ProductSearchResponse product)
     {
-        var stockStatus = product.IsAvailableForSale ? "Sotuvda bor" : "Sotuvda yo'q";
-        return $"{FormatPrice(product.Price)} so'm | SKUlar: {product.SkuCount} | {stockStatus}";
+        var stockStatus = product.IsAvailableForSale ? "✅ Sotuvda bor" : "⛔ Hozircha sotuvda yo'q";
+        return $"💰 {FormatPrice(product.Price)} so'm • 📦 {product.SkuCount} variant • {stockStatus}";
     }
 
-    private static string BuildProductMessage(ProductSearchResponse product)
+    private static string BuildProductMessage(ProductSearchResponse product, string? imageUrl)
     {
-        var stockStatus = product.IsAvailableForSale ? "Sotuvda bor" : "Sotuvda yo'q";
-        return $"""
-                <b>{EscapeHtml(product.Name)}</b>
+        var stockStatus = product.IsAvailableForSale ? "✅ Sotuvda bor" : "⛔ Hozircha sotuvda yo'q";
+        var imagePreviewLink = string.IsNullOrWhiteSpace(imageUrl)
+            ? string.Empty
+            : $"<a href=\"{EscapeHtml(imageUrl)}\">&#8205;</a>\n";
 
-                Narxi: {FormatPrice(product.Price)} so'm
-                SKUlar soni: {product.SkuCount}
-                Holati: {stockStatus}
+        return $"""
+                {imagePreviewLink}🛍️ <b>{EscapeHtml(product.Name)}</b>
+
+                💰 Narxi: {FormatPrice(product.Price)} so'm
+                📦 Variantlar: {product.SkuCount} ta
+                {stockStatus}
+
+                👇 Batafsil ko'rish uchun tugmani bosing.
                 """;
     }
 
@@ -191,7 +166,7 @@ public sealed class TelegramUpdateHandler(
                 [
                     new TelegramInlineKeyboardButton
                     {
-                        Text = "Mahsulotni ochish",
+                        Text = "🛍️ Mahsulotni ochish",
                         Url = redirectUrl
                     }
                 ]

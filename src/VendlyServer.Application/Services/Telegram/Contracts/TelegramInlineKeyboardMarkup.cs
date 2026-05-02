@@ -34,5 +34,21 @@ public sealed class TelegramInputTextMessageContent
     public string ParseMode { get; init; } = "HTML";
 
     [JsonPropertyName("disable_web_page_preview")]
-    public bool DisableWebPagePreview { get; init; } = true;
+    public bool DisableWebPagePreview { get; init; }
+
+    [JsonPropertyName("link_preview_options")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TelegramLinkPreviewOptions? LinkPreviewOptions { get; init; }
+}
+
+public sealed class TelegramLinkPreviewOptions
+{
+    [JsonPropertyName("url")]
+    public string Url { get; init; } = string.Empty;
+
+    [JsonPropertyName("prefer_large_media")]
+    public bool PreferLargeMedia { get; init; } = true;
+
+    [JsonPropertyName("show_above_text")]
+    public bool ShowAboveText { get; init; } = true;
 }
