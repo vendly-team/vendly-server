@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
-using Minio.Exceptions;
 
 namespace VendlyServer.Application.Services.Storage;
 
@@ -43,7 +42,11 @@ public class MinioStorageService(
 
             await minioClient.PutObjectAsync(args, cancellationToken);
         }
-        catch (MinioException)
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
         {
             return StorageErrors.UploadFailed;
         }
@@ -68,7 +71,11 @@ public class MinioStorageService(
 
             await minioClient.RemoveObjectAsync(args, cancellationToken);
         }
-        catch (MinioException)
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
         {
             return StorageErrors.DeleteFailed;
         }
