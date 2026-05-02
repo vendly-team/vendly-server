@@ -1,15 +1,17 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.Auth.Contracts;
 using VendlyServer.Infrastructure.Extensions;
 
 namespace VendlyServer.Api.Controllers.Public;
 
-[ApiController]
 [Route("api/auth")]
-public class AuthController(IAuthService authService) : ControllerBase
+public class AuthController(IAuthService authService) : AuthorizedController
 {
-    /// <summary>Login with phone and password.</summary>
+    /// <summary>Login with phone/email and password.</summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IResult> LoginAsync(
         [FromBody] LoginRequest request,
@@ -20,6 +22,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     /// <summary>Register a new customer account.</summary>
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IResult> RegisterAsync(
         [FromBody] RegisterRequest request,
@@ -30,6 +33,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     /// <summary>Get new access and refresh tokens using a valid refresh token.</summary>
+    [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<IResult> RefreshTokenAsync(
         [FromBody] RefreshTokenRequest request,
@@ -40,6 +44,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     /// <summary>Revoke the provided refresh token.</summary>
+    [AllowAnonymous]
     [HttpPost("logout")]
     public async Task<IResult> LogoutAsync(
         [FromBody] RefreshTokenRequest request,
@@ -47,5 +52,13 @@ public class AuthController(IAuthService authService) : ControllerBase
     {
         var result = await authService.LogoutAsync(request.RefreshToken, cancellationToken);
         return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
+    }
+
+    /// <summary>Get the currently authenticated user's profile.</summary>
+    [HttpGet("me")]
+    public async Task<IResult> GetMeAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await authService.GetMeAsync(UserId, cancellationToken);
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 }
