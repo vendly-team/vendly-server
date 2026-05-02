@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Telegram;
@@ -27,6 +28,7 @@ public class TelegramUpdateHandlerTests
                 PublicBaseUrl = "https://api.vendly.uz",
                 InlineResultLimit = 10
             }),
+            Options.Create(new ClientOptions { BaseUrl = "https://vendly.uz" }),
             NullLogger<TelegramUpdateHandler>.Instance);
     }
 
@@ -50,6 +52,7 @@ public class TelegramUpdateHandlerTests
                 PublicBaseUrl = "https://api.vendly.uz",
                 InlineResultLimit = 10
             }),
+            Options.Create(new ClientOptions { BaseUrl = "https://vendly.uz" }),
             NullLogger<TelegramUpdateHandler>.Instance);
 
         await handler.HandleAsync(new TelegramUpdate
@@ -132,9 +135,13 @@ public class TelegramUpdateHandlerTests
             }
         });
 
-        Assert.Equal(123, _botClient.SentMessages.Single().ChatId);
-        Assert.Contains("Assalomu alaykum", _botClient.SentMessages.Single().Text);
-        Assert.Contains("🔎", _botClient.SentMessages.Single().Text);
+        var sentAnimation = Assert.Single(_botClient.SentAnimations);
+        Assert.Equal(123, sentAnimation.ChatId);
+        Assert.Equal("https://api.vendly.uz/tgbot-welcome.gif", sentAnimation.AnimationUrl);
+        Assert.Contains("Assalomu alaykum", sentAnimation.Caption);
+        Assert.Contains("🔎", sentAnimation.Caption);
+        Assert.Contains("Mini appni ochish", sentAnimation.ReplyMarkup!.ToString());
+        Assert.Contains("https://t.me/optouzbot?text=%40optouzbot%20ab", sentAnimation.ReplyMarkup.ToString());
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
@@ -142,12 +149,24 @@ public class TelegramUpdateHandlerTests
         public string? AnsweredInlineQueryId { get; private set; }
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
         public List<(long ChatId, string Text)> SentMessages { get; } = [];
+        public List<(long ChatId, string AnimationUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentAnimations { get; } = [];
 
         public Task SetWebhookAsync(string url, string secretToken, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task SendMessageAsync(long chatId, string text, CancellationToken cancellationToken = default)
         {
             SentMessages.Add((chatId, text));
+            return Task.CompletedTask;
+        }
+
+        public Task SendAnimationAsync(
+            long chatId,
+            string animationUrl,
+            string caption,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            CancellationToken cancellationToken = default)
+        {
+            SentAnimations.Add((chatId, animationUrl, caption, replyMarkup));
             return Task.CompletedTask;
         }
 

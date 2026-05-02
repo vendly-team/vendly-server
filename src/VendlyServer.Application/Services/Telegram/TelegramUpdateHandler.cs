@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Telegram.Contracts;
@@ -12,11 +13,14 @@ public sealed class TelegramUpdateHandler(
     ITelegramImageUrlValidator imageUrlValidator,
     IProductService productService,
     IOptions<TelegramBotOptions> options,
+    IOptions<ClientOptions> clientOptions,
     ILogger<TelegramUpdateHandler> logger) : ITelegramUpdateHandler
 {
     private const int EmptyQueryCacheTimeSeconds = 5;
     private const int ResultCacheTimeSeconds = 30;
+    private static readonly string[] HappyCalmEmojis = ["🙂", "😊", "🤗", "😌", "✨", "🌟", "💫", "🙌", "👌", "👍", "💙", "💚"];
     private readonly TelegramBotOptions _options = options.Value;
+    private readonly ClientOptions _clientOptions = clientOptions.Value;
 
     public async Task HandleAsync(TelegramUpdate update, CancellationToken cancellationToken = default)
     {
@@ -80,11 +84,58 @@ public sealed class TelegramUpdateHandler(
 
         if (message.Text.StartsWith("/start", StringComparison.OrdinalIgnoreCase))
         {
-            await botClient.SendMessageAsync(
+            var emoji = HappyCalmEmojis[Random.Shared.Next(HappyCalmEmojis.Length)];
+            await botClient.SendAnimationAsync(
                 message.Chat.Id,
-                "Assalomu alaykum! 👋\n\n🔎 Mahsulot qidirish uchun istalgan chatda bot username'ini yozing va yoniga mahsulot nomini kiriting.\n\nMasalan: <code>@bot kir yuvish mashinasi</code>",
+                BuildWelcomeGifUrl(),
+                $"""
+                 {emoji} <b>Assalomu alaykum!</b>
+
+                 Vendly botga xush kelibsiz.
+
+                 🔎 Mahsulot qidirish uchun istalgan chatda bot username'ini yozing va yoniga mahsulot nomini kiriting.
+
+                 Masalan: <code>@optouzbot ab</code>
+                 """,
+                BuildStartKeyboard(),
                 cancellationToken);
         }
+    }
+
+    private TelegramInlineKeyboardMarkup BuildStartKeyboard()
+    {
+        return new TelegramInlineKeyboardMarkup
+        {
+            InlineKeyboard =
+            [
+                [
+                    new TelegramInlineKeyboardButton
+                    {
+                        Text = "🛍️ Mini appni ochish",
+                        WebApp = new TelegramWebAppInfo { Url = BuildMiniAppUrl() }
+                    }
+                ],
+                [
+                    new TelegramInlineKeyboardButton
+                    {
+                        Text = "🔎 Mahsulot qidirish",
+                        Url = "https://t.me/optouzbot?text=%40optouzbot%20ab"
+                    }
+                ]
+            ]
+        };
+    }
+
+    private string BuildWelcomeGifUrl()
+    {
+        return $"{_options.PublicBaseUrl.TrimEnd('/')}/tgbot-welcome.gif";
+    }
+
+    private string BuildMiniAppUrl()
+    {
+        return string.IsNullOrWhiteSpace(_options.MiniAppUrl)
+            ? _clientOptions.BaseUrl
+            : _options.MiniAppUrl;
     }
 
     private async Task<Dictionary<string, object?>> BuildInlineResultAsync(

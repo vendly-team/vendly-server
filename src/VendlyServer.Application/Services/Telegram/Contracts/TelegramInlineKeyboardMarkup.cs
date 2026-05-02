@@ -22,6 +22,17 @@ public sealed class TelegramInlineKeyboardButton
     public string Text { get; init; } = string.Empty;
 
     [JsonPropertyName("url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("web_app")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TelegramWebAppInfo? WebApp { get; init; }
+}
+
+public sealed class TelegramWebAppInfo
+{
+    [JsonPropertyName("url")]
     public string Url { get; init; } = string.Empty;
 }
 
