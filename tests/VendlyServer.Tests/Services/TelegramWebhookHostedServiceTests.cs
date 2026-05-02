@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Telegram;
+using VendlyServer.Application.Services.Telegram.Contracts;
 
 namespace VendlyServer.Tests.Services;
 
@@ -64,6 +65,13 @@ public class TelegramWebhookHostedServiceTests
             SentMessages.Add((chatId, text));
             return Task.CompletedTask;
         }
+
+        public Task SendAnimationAsync(
+            long chatId,
+            string animationUrl,
+            string caption,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task AnswerInlineQueryAsync(
             string inlineQueryId,

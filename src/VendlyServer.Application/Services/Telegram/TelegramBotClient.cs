@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using VendlyServer.Application.Services.Telegram.Contracts;
 
 namespace VendlyServer.Application.Services.Telegram;
 
@@ -26,6 +27,21 @@ public sealed class TelegramBotClient(
             cancellationToken);
 
         await EnsureSuccessAsync(response, "sendMessage", cancellationToken);
+    }
+
+    public async Task SendAnimationAsync(
+        long chatId,
+        string animationUrl,
+        string caption,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync(
+            "sendAnimation",
+            new SendAnimationRequest(chatId, animationUrl, caption, replyMarkup),
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, "sendAnimation", cancellationToken);
     }
 
     public async Task AnswerInlineQueryAsync(
@@ -72,6 +88,13 @@ public sealed class TelegramBotClient(
         [property: JsonPropertyName("text")] string Text,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
         [property: JsonPropertyName("disable_web_page_preview")] bool DisableWebPagePreview = true);
+
+    private sealed record SendAnimationRequest(
+        [property: JsonPropertyName("chat_id")] long ChatId,
+        [property: JsonPropertyName("animation")] string Animation,
+        [property: JsonPropertyName("caption")] string Caption,
+        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML");
 
     private sealed record AnswerInlineQueryRequest(
         [property: JsonPropertyName("inline_query_id")] string InlineQueryId,
