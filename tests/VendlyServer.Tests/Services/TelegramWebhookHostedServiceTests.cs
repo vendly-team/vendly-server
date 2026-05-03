@@ -73,6 +73,13 @@ public class TelegramWebhookHostedServiceTests
             TelegramInlineKeyboardMarkup? replyMarkup = null,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public Task SendDocumentAsync(
+            long chatId,
+            string documentUrl,
+            string caption,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task AnswerInlineQueryAsync(
             string inlineQueryId,
             IReadOnlyList<Dictionary<string, object?>> results,

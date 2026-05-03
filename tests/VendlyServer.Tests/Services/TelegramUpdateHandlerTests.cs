@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Telegram;
@@ -28,7 +27,6 @@ public class TelegramUpdateHandlerTests
                 PublicBaseUrl = "https://api.vendly.uz",
                 InlineResultLimit = 10
             }),
-            Options.Create(new ClientOptions { BaseUrl = "https://vendly.uz" }),
             NullLogger<TelegramUpdateHandler>.Instance);
     }
 
@@ -52,7 +50,6 @@ public class TelegramUpdateHandlerTests
                 PublicBaseUrl = "https://api.vendly.uz",
                 InlineResultLimit = 10
             }),
-            Options.Create(new ClientOptions { BaseUrl = "https://vendly.uz" }),
             NullLogger<TelegramUpdateHandler>.Instance);
 
         await handler.HandleAsync(new TelegramUpdate
@@ -77,7 +74,12 @@ public class TelegramUpdateHandlerTests
 
         await _handler.HandleAsync(new TelegramUpdate
         {
-            InlineQuery = new TelegramInlineQuery { Id = "query-1", Query = "samsung" }
+            InlineQuery = new TelegramInlineQuery
+            {
+                Id = "query-1",
+                Query = "samsung",
+                From = new TelegramUser { Id = 777 }
+            }
         });
 
         Assert.Equal("query-1", _botClient.AnsweredInlineQueryId);
@@ -88,6 +90,7 @@ public class TelegramUpdateHandlerTests
         Assert.Contains("Sotuvda bor", result["description"]!.ToString());
         Assert.Equal("https://files.vendly.uz/tv.jpg", result["thumbnail_url"]);
         Assert.Contains("Mahsulotni ochish", result["reply_markup"]!.ToString());
+        Assert.Contains("ref=777", result["reply_markup"]!.ToString());
         Assert.Contains("input_message_content", string.Join(',', result.Keys));
     }
 
@@ -131,17 +134,19 @@ public class TelegramUpdateHandlerTests
             Message = new TelegramMessage
             {
                 Text = "/start",
-                Chat = new TelegramChat { Id = 123 }
+                From = new TelegramUser { Id = 123, Username = "timur_test" },
+                Chat = new TelegramChat { Id = 123, Username = "timur_test" }
             }
         });
 
-        var sentAnimation = Assert.Single(_botClient.SentAnimations);
-        Assert.Equal(123, sentAnimation.ChatId);
-        Assert.Equal("https://api.vendly.uz/tgbot-welcome.gif", sentAnimation.AnimationUrl);
-        Assert.Contains("Assalomu alaykum", sentAnimation.Caption);
-        Assert.Contains("🔎", sentAnimation.Caption);
-        Assert.Contains("Mini appni ochish", sentAnimation.ReplyMarkup!.ToString());
-        Assert.Contains("https://t.me/optouzbot?text=%40optouzbot%20ab", sentAnimation.ReplyMarkup.ToString());
+        var sentDocument = Assert.Single(_botClient.SentDocuments);
+        Assert.Equal(123, sentDocument.ChatId);
+        Assert.Equal("https://api.vendly.uz/tgbot-welcome.gif", sentDocument.DocumentUrl);
+        Assert.Contains("Assalomu alaykum", sentDocument.Caption);
+        Assert.Contains("Saved Messages", sentDocument.Caption);
+        Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentDocument.Caption);
+        Assert.Null(sentDocument.ReplyMarkup);
+        Assert.Empty(_botClient.SentAnimations);
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
@@ -150,6 +155,7 @@ public class TelegramUpdateHandlerTests
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
         public List<(long ChatId, string Text)> SentMessages { get; } = [];
         public List<(long ChatId, string AnimationUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentAnimations { get; } = [];
+        public List<(long ChatId, string DocumentUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentDocuments { get; } = [];
 
         public Task SetWebhookAsync(string url, string secretToken, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -167,6 +173,17 @@ public class TelegramUpdateHandlerTests
             CancellationToken cancellationToken = default)
         {
             SentAnimations.Add((chatId, animationUrl, caption, replyMarkup));
+            return Task.CompletedTask;
+        }
+
+        public Task SendDocumentAsync(
+            long chatId,
+            string documentUrl,
+            string caption,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            CancellationToken cancellationToken = default)
+        {
+            SentDocuments.Add((chatId, documentUrl, caption, replyMarkup));
             return Task.CompletedTask;
         }
 

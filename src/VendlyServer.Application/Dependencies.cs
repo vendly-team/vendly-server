@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Minio;
+using VendlyServer.Application.Jobs.Auth;
 using VendlyServer.Application.Jobs.BtsCatalog;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.BtsRef;
@@ -35,6 +36,7 @@ public static class Dependencies
         services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
 
         services.AddScoped<IBtsCatalogSyncJob, BtsCatalogSyncJob>();
+        services.AddScoped<ICleanExpiredRefreshTokensJob, CleanExpiredRefreshTokensJob>();
 
         return services;
     }
