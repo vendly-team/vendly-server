@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application;
@@ -176,8 +177,25 @@ public sealed class TelegramUpdateHandler(
         if (uri.Scheme is not ("http" or "https"))
             return false;
 
-        return !uri.IsLoopback &&
-               !string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+        if (uri.IsLoopback || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (IPAddress.TryParse(uri.Host, out var ip) && IsPrivateOrReservedIp(ip))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsPrivateOrReservedIp(IPAddress ip)
+    {
+        var bytes = ip.GetAddressBytes();
+        return ip.IsIPv6LinkLocal
+            || ip.IsIPv6SiteLocal
+            || (bytes.Length == 4 && (
+                bytes[0] == 10
+                || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+                || (bytes[0] == 192 && bytes[1] == 168)
+                || (bytes[0] == 169 && bytes[1] == 254)));
     }
 
     private Dictionary<string, object?> BuildArticleResult(ProductSearchResponse product, string? imageUrl = null)
