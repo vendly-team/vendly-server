@@ -15,14 +15,14 @@ builder.Services
     .ConfigureInfrastructure(builder.Configuration)
     .ConfigureSwagger()
     .ConfigureControllers()
-    .ConfigureCors()
+    .ConfigureCors(builder.Configuration)
     .ConfigureHangfire(builder.Configuration);
 
 builder.ConfigureHostConfigurations();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Environment.IsProduction())
+if (!app.Environment.IsProduction())
 {
     app.UseStaticFiles();
     app.UseSwagger();
