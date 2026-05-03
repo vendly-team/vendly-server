@@ -9,7 +9,7 @@ public class CurrencyApiClient(HttpClient httpClient, ILogger<CurrencyApiClient>
     {
         try
         {
-            var response = await httpClient.GetAsync("latest", cancellationToken);
+            var response = await httpClient.GetAsync($"latest?currencies={Uri.EscapeDataString(currencyCode.ToUpperInvariant())}", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
