@@ -139,19 +139,44 @@ public class TelegramUpdateHandlerTests
             }
         });
 
+        var sentMessage = Assert.Single(_botClient.SentMessages);
+        Assert.Equal(123, sentMessage.ChatId);
+        Assert.Contains("Assalomu alaykum", sentMessage.Text);
+        Assert.Contains("Saved Messages", sentMessage.Text);
+        Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentMessage.Text);
+
         var sentDocument = Assert.Single(_botClient.SentDocuments);
         Assert.Equal(123, sentDocument.ChatId);
         Assert.Equal("https://api.vendly.uz/tgbot-welcome.gif", sentDocument.DocumentUrl);
-        Assert.Contains("Assalomu alaykum", sentDocument.Caption);
-        Assert.Contains("Saved Messages", sentDocument.Caption);
-        Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentDocument.Caption);
+        Assert.Contains("Xush kelibsiz", sentDocument.Caption);
         Assert.Null(sentDocument.ReplyMarkup);
         Assert.Empty(_botClient.SentAnimations);
+    }
+
+    [Fact]
+    public async Task HandleAsync_RepliesToStartCommand_WhenWelcomeDocumentFails()
+    {
+        _botClient.ShouldFailDocumentSend = true;
+
+        await _handler.HandleAsync(new TelegramUpdate
+        {
+            Message = new TelegramMessage
+            {
+                Text = "/start",
+                From = new TelegramUser { Id = 123, Username = "timur_test" },
+                Chat = new TelegramChat { Id = 123, Username = "timur_test" }
+            }
+        });
+
+        var sentMessage = Assert.Single(_botClient.SentMessages);
+        Assert.Contains("Assalomu alaykum", sentMessage.Text);
+        Assert.Empty(_botClient.SentDocuments);
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
     {
         public string? AnsweredInlineQueryId { get; private set; }
+        public bool ShouldFailDocumentSend { get; set; }
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
         public List<(long ChatId, string Text)> SentMessages { get; } = [];
         public List<(long ChatId, string AnimationUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentAnimations { get; } = [];
@@ -183,6 +208,9 @@ public class TelegramUpdateHandlerTests
             TelegramInlineKeyboardMarkup? replyMarkup = null,
             CancellationToken cancellationToken = default)
         {
+            if (ShouldFailDocumentSend)
+                throw new HttpRequestException("Telegram rejected document.");
+
             SentDocuments.Add((chatId, documentUrl, caption, replyMarkup));
             return Task.CompletedTask;
         }
