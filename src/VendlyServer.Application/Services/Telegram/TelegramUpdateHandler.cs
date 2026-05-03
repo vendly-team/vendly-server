@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Telegram.Contracts;
@@ -14,14 +13,12 @@ public sealed class TelegramUpdateHandler(
     ITelegramImageUrlValidator imageUrlValidator,
     IProductService productService,
     IOptions<TelegramBotOptions> options,
-    IOptions<ClientOptions> clientOptions,
     ILogger<TelegramUpdateHandler> logger) : ITelegramUpdateHandler
 {
     private const int EmptyQueryCacheTimeSeconds = 5;
     private const int ResultCacheTimeSeconds = 30;
     private static readonly string[] HappyCalmEmojis = ["🙂", "😊", "🤗", "😌", "✨", "🌟", "💫", "🙌", "👌", "👍", "💙", "💚"];
     private readonly TelegramBotOptions _options = options.Value;
-    private readonly ClientOptions _clientOptions = clientOptions.Value;
 
     public async Task HandleAsync(TelegramUpdate update, CancellationToken cancellationToken = default)
     {
@@ -73,7 +70,7 @@ public sealed class TelegramUpdateHandler(
 
         var results = new List<Dictionary<string, object?>>();
         foreach (var product in products)
-            results.Add(await BuildInlineResultAsync(product, cancellationToken));
+            results.Add(await BuildInlineResultAsync(product, inlineQuery.From?.Id, cancellationToken));
 
         await botClient.AnswerInlineQueryAsync(inlineQuery.Id, results, ResultCacheTimeSeconds, cancellationToken);
     }
@@ -86,45 +83,42 @@ public sealed class TelegramUpdateHandler(
         if (message.Text.StartsWith("/start", StringComparison.OrdinalIgnoreCase))
         {
             var emoji = HappyCalmEmojis[Random.Shared.Next(HappyCalmEmojis.Length)];
-            await botClient.SendAnimationAsync(
+            await botClient.SendDocumentAsync(
                 message.Chat.Id,
                 BuildWelcomeGifUrl(),
-                $"""
-                 {emoji} <b>Assalomu alaykum!</b>
-
-                 Vendly botga xush kelibsiz.
-
-                 🔎 Mahsulot qidirish uchun istalgan chatda bot username'ini yozing va yoniga mahsulot nomini kiriting.
-
-                 Masalan: <code>@optouzbot ab</code>
-                 """,
-                BuildStartKeyboard(),
+                BuildStartMessage(message, emoji),
+                null,
                 cancellationToken);
         }
     }
 
-    private TelegramInlineKeyboardMarkup BuildStartKeyboard()
+    private static string BuildStartMessage(TelegramMessage message, string emoji)
     {
-        return new TelegramInlineKeyboardMarkup
-        {
-            InlineKeyboard =
-            [
-                [
-                    new TelegramInlineKeyboardButton
-                    {
-                        Text = "🛍️ Mini appni ochish",
-                        WebApp = new TelegramWebAppInfo { Url = BuildMiniAppUrl() }
-                    }
-                ],
-                [
-                    new TelegramInlineKeyboardButton
-                    {
-                        Text = "🔎 Mahsulot qidirish",
-                        Url = "https://t.me/optouzbot?text=%40optouzbot%20ab"
-                    }
-                ]
-            ]
-        };
+        var searchDeepLink = BuildSearchDeepLink(message);
+        var searchLine = string.IsNullOrWhiteSpace(searchDeepLink)
+            ? "🔎 Mahsulot qidirish uchun istalgan chatda <code>@optouzbot ab</code> yozing."
+            : $"🔎 Mahsulot qidirish uchun <a href=\"{EscapeHtml(searchDeepLink)}\">Saved Messages</a>ni oching.";
+
+        return $"""
+                {emoji} <b>Assalomu alaykum!</b>
+
+                Vendly botga xush kelibsiz.
+
+                {searchLine}
+
+                Masalan: <code>@optouzbot ab</code>
+                """;
+    }
+
+    private static string? BuildSearchDeepLink(TelegramMessage message)
+    {
+        var username = (message.From?.Username ?? message.Chat?.Username)?.Trim().TrimStart('@');
+        if (string.IsNullOrWhiteSpace(username))
+            return null;
+
+        var encodedUsername = Uri.EscapeDataString(username);
+        var encodedText = Uri.EscapeDataString("@optouzbot ab");
+        return $"https://t.me/{encodedUsername}?text={encodedText}".Trim();
     }
 
     private string BuildWelcomeGifUrl()
@@ -132,19 +126,13 @@ public sealed class TelegramUpdateHandler(
         return $"{_options.PublicBaseUrl.TrimEnd('/')}/tgbot-welcome.gif";
     }
 
-    private string BuildMiniAppUrl()
-    {
-        return string.IsNullOrWhiteSpace(_options.MiniAppUrl)
-            ? _clientOptions.BaseUrl
-            : _options.MiniAppUrl;
-    }
-
     private async Task<Dictionary<string, object?>> BuildInlineResultAsync(
         ProductSearchResponse product,
+        long? refChatId,
         CancellationToken cancellationToken)
     {
         var imageUrl = await SelectTelegramImageUrlAsync(product.Images, cancellationToken);
-        return BuildArticleResult(product, imageUrl);
+        return BuildArticleResult(product, imageUrl, refChatId);
     }
 
     private async Task<string?> SelectTelegramImageUrlAsync(
@@ -198,7 +186,10 @@ public sealed class TelegramUpdateHandler(
                 || (bytes[0] == 169 && bytes[1] == 254)));
     }
 
-    private Dictionary<string, object?> BuildArticleResult(ProductSearchResponse product, string? imageUrl = null)
+    private Dictionary<string, object?> BuildArticleResult(
+        ProductSearchResponse product,
+        string? imageUrl = null,
+        long? refChatId = null)
     {
         var result = new Dictionary<string, object?>
         {
@@ -214,7 +205,7 @@ public sealed class TelegramUpdateHandler(
                     ? null
                     : new TelegramLinkPreviewOptions { Url = imageUrl }
             },
-            ["reply_markup"] = BuildOpenProductKeyboard(product.RedirectUrl)
+            ["reply_markup"] = BuildOpenProductKeyboard(product.RedirectUrl, refChatId)
         };
 
         if (!string.IsNullOrWhiteSpace(imageUrl) && IsTelegramFetchableImageUrl(imageUrl))
@@ -251,7 +242,7 @@ public sealed class TelegramUpdateHandler(
                 """;
     }
 
-    private static TelegramInlineKeyboardMarkup BuildOpenProductKeyboard(string redirectUrl)
+    private static TelegramInlineKeyboardMarkup BuildOpenProductKeyboard(string redirectUrl, long? refChatId)
     {
         return new TelegramInlineKeyboardMarkup
         {
@@ -261,11 +252,20 @@ public sealed class TelegramUpdateHandler(
                     new TelegramInlineKeyboardButton
                     {
                         Text = "🛍️ Mahsulotni ochish",
-                        Url = redirectUrl
+                        Url = BuildProductRedirectUrl(redirectUrl, refChatId)
                     }
                 ]
             ]
         };
+    }
+
+    private static string BuildProductRedirectUrl(string redirectUrl, long? refChatId)
+    {
+        if (!refChatId.HasValue)
+            return redirectUrl;
+
+        var separator = redirectUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        return $"{redirectUrl}{separator}ref={refChatId.Value}";
     }
 
     private string? ResolvePublicUrl(string? imageUrl)

@@ -44,6 +44,21 @@ public sealed class TelegramBotClient(
         await EnsureSuccessAsync(response, "sendAnimation", cancellationToken);
     }
 
+    public async Task SendDocumentAsync(
+        long chatId,
+        string documentUrl,
+        string caption,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync(
+            "sendDocument",
+            new SendDocumentRequest(chatId, documentUrl, caption, replyMarkup),
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, "sendDocument", cancellationToken);
+    }
+
     public async Task AnswerInlineQueryAsync(
         string inlineQueryId,
         IReadOnlyList<Dictionary<string, object?>> results,
@@ -95,6 +110,14 @@ public sealed class TelegramBotClient(
         [property: JsonPropertyName("caption")] string Caption,
         [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML");
+
+    private sealed record SendDocumentRequest(
+        [property: JsonPropertyName("chat_id")] long ChatId,
+        [property: JsonPropertyName("document")] string Document,
+        [property: JsonPropertyName("caption")] string Caption,
+        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
+        [property: JsonPropertyName("disable_content_type_detection")] bool DisableContentTypeDetection = true);
 
     private sealed record AnswerInlineQueryRequest(
         [property: JsonPropertyName("inline_query_id")] string InlineQueryId,

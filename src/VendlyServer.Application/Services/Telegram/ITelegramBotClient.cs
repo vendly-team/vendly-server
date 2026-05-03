@@ -15,6 +15,13 @@ public interface ITelegramBotClient
         TelegramInlineKeyboardMarkup? replyMarkup = null,
         CancellationToken cancellationToken = default);
 
+    Task SendDocumentAsync(
+        long chatId,
+        string documentUrl,
+        string caption,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        CancellationToken cancellationToken = default);
+
     Task AnswerInlineQueryAsync(
         string inlineQueryId,
         IReadOnlyList<Dictionary<string, object?>> results,
