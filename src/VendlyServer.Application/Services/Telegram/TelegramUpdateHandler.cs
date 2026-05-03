@@ -83,12 +83,27 @@ public sealed class TelegramUpdateHandler(
         if (message.Text.StartsWith("/start", StringComparison.OrdinalIgnoreCase))
         {
             var emoji = HappyCalmEmojis[Random.Shared.Next(HappyCalmEmojis.Length)];
-            await botClient.SendDocumentAsync(
+            await botClient.SendMessageAsync(
                 message.Chat.Id,
-                BuildWelcomeGifUrl(),
                 BuildStartMessage(message, emoji),
-                null,
                 cancellationToken);
+
+            try
+            {
+                await botClient.SendDocumentAsync(
+                    message.Chat.Id,
+                    BuildWelcomeGifUrl(),
+                    "🎁 Xush kelibsiz!",
+                    null,
+                    cancellationToken);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Failed to send Telegram welcome document to chat {ChatId}.",
+                    message.Chat.Id);
+            }
         }
     }
 
