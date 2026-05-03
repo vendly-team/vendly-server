@@ -32,7 +32,7 @@ public sealed class TelegramController(
     private bool IsValidSecretToken()
     {
         if (string.IsNullOrWhiteSpace(_options.WebhookSecretToken))
-            return true;
+            return false;
 
         return Request.Headers.TryGetValue(SecretTokenHeaderName, out var actualSecretToken) &&
                string.Equals(actualSecretToken.ToString(), _options.WebhookSecretToken, StringComparison.Ordinal);
