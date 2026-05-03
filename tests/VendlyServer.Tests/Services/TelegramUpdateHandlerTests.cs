@@ -186,10 +186,36 @@ public class TelegramUpdateHandlerTests
         Assert.Single(_botClient.SentAnimations);
     }
 
+    [Fact]
+    public async Task HandleAsync_SendsFallbackStartMessage_WhenRichStartMessageFails()
+    {
+        _botClient.ShouldFailRichMessageSend = true;
+
+        await _handler.HandleAsync(new TelegramUpdate
+        {
+            Message = new TelegramMessage
+            {
+                MessageId = 456,
+                Text = "/start",
+                From = new TelegramUser { Id = 123, Username = "timur_test" },
+                Chat = new TelegramChat { Id = 123, Username = "timur_test" }
+            }
+        });
+
+        Assert.Equal(2, _botClient.SendMessageAttempts);
+        var sentMessage = Assert.Single(_botClient.SentMessages);
+        Assert.Contains("Assalomu alaykum", sentMessage.Text);
+        Assert.Contains("Opto'ning rasmiy boti", sentMessage.Text);
+        Assert.Null(sentMessage.ReplyMarkup);
+        Assert.Null(sentMessage.ReplyToMessageId);
+    }
+
     private sealed class FakeTelegramBotClient : ITelegramBotClient
     {
         public string? AnsweredInlineQueryId { get; private set; }
         public bool ShouldFailDocumentSend { get; set; }
+        public bool ShouldFailRichMessageSend { get; set; }
+        public int SendMessageAttempts { get; private set; }
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
         public List<(long ChatId, string Text, TelegramInlineKeyboardMarkup? ReplyMarkup, long? ReplyToMessageId)> SentMessages { get; } = [];
         public List<(long ChatId, string AnimationUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentAnimations { get; } = [];
@@ -205,6 +231,10 @@ public class TelegramUpdateHandlerTests
             TelegramInlineKeyboardMarkup? replyMarkup = null,
             long? replyToMessageId = null)
         {
+            SendMessageAttempts++;
+            if (ShouldFailRichMessageSend && replyMarkup is not null)
+                throw new HttpRequestException("Telegram rejected rich message.");
+
             SentMessages.Add((chatId, text, replyMarkup, replyToMessageId));
             return Task.CompletedTask;
         }

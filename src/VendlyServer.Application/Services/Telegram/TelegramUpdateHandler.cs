@@ -85,12 +85,7 @@ public sealed class TelegramUpdateHandler(
             var emoji = HappyCalmEmojis[Random.Shared.Next(HappyCalmEmojis.Length)];
             await TrySetStartReactionAsync(message, emoji, cancellationToken);
 
-            await botClient.SendMessageAsync(
-                message.Chat.Id,
-                BuildStartMessage(emoji),
-                cancellationToken,
-                BuildSearchKeyboard(message),
-                message.MessageId > 0 ? message.MessageId : null);
+            await SendStartMessageAsync(message, emoji, cancellationToken);
 
             try
             {
@@ -110,6 +105,34 @@ public sealed class TelegramUpdateHandler(
 
                 await TrySendWelcomeAnimationAsync(message.Chat.Id, cancellationToken);
             }
+        }
+    }
+
+    private async Task SendStartMessageAsync(TelegramMessage message, string emoji, CancellationToken cancellationToken)
+    {
+        if (message.Chat is null)
+            return;
+
+        try
+        {
+            await botClient.SendMessageAsync(
+                message.Chat.Id,
+                BuildStartMessage(emoji),
+                cancellationToken,
+                BuildSearchKeyboard(message),
+                message.MessageId > 0 ? message.MessageId : null);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to send Telegram rich start message to chat {ChatId}. Sending fallback message.",
+                message.Chat.Id);
+
+            await botClient.SendMessageAsync(
+                message.Chat.Id,
+                BuildFallbackStartMessage(emoji),
+                cancellationToken);
         }
     }
 
@@ -162,6 +185,17 @@ public sealed class TelegramUpdateHandler(
                 Mahsulotlarni tez qidirishingiz mumkin.
 
                 Inline qidiruv: istalgan chatda <code>@optouzbot</code> va mahsulot nomini yozing.
+                """;
+    }
+
+    private static string BuildFallbackStartMessage(string emoji)
+    {
+        return $"""
+                {emoji} Assalomu alaykum!
+
+                Bu Opto'ning rasmiy boti.
+
+                Mahsulot qidirish uchun istalgan chatda @optouzbot va mahsulot nomini yozing.
                 """;
     }
 
