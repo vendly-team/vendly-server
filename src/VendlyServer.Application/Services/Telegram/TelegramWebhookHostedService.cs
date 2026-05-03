@@ -46,6 +46,18 @@ public sealed class TelegramWebhookHostedService(
     private async Task NotifyAdminsAsync(string text, CancellationToken cancellationToken)
     {
         foreach (var adminChatId in _options.AdminChatIds)
-            await botClient.SendMessageAsync(adminChatId, text, cancellationToken);
+        {
+            try
+            {
+                await botClient.SendMessageAsync(adminChatId, text, cancellationToken);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Failed to send Telegram lifecycle notification to admin chat {AdminChatId}.",
+                    adminChatId);
+            }
+        }
     }
 }

@@ -129,8 +129,12 @@ public sealed class TelegramBotClient(
     private sealed record SendMessageRequest(
         [property: JsonPropertyName("chat_id")] long ChatId,
         [property: JsonPropertyName("text")] string Text,
-        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
-        [property: JsonPropertyName("reply_parameters")] TelegramReplyParameters? ReplyParameters,
+        [property: JsonPropertyName("reply_markup")]
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("reply_parameters")]
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        TelegramReplyParameters? ReplyParameters,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
         [property: JsonPropertyName("disable_web_page_preview")] bool DisableWebPagePreview = true);
 
@@ -141,14 +145,18 @@ public sealed class TelegramBotClient(
         [property: JsonPropertyName("chat_id")] long ChatId,
         [property: JsonPropertyName("animation")] string Animation,
         [property: JsonPropertyName("caption")] string Caption,
-        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("reply_markup")]
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        TelegramInlineKeyboardMarkup? ReplyMarkup,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML");
 
     private sealed record SendDocumentRequest(
         [property: JsonPropertyName("chat_id")] long ChatId,
         [property: JsonPropertyName("document")] string Document,
         [property: JsonPropertyName("caption")] string Caption,
-        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("reply_markup")]
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        TelegramInlineKeyboardMarkup? ReplyMarkup,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
         [property: JsonPropertyName("disable_content_type_detection")] bool DisableContentTypeDetection = true);
 
