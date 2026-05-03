@@ -19,11 +19,22 @@ public sealed class TelegramBotClient(
         await EnsureSuccessAsync(response, "setWebhook", cancellationToken);
     }
 
-    public async Task SendMessageAsync(long chatId, string text, CancellationToken cancellationToken = default)
+    public async Task SendMessageAsync(
+        long chatId,
+        string text,
+        CancellationToken cancellationToken = default,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        long? replyToMessageId = null)
     {
         var response = await httpClient.PostAsJsonAsync(
             "sendMessage",
-            new SendMessageRequest(chatId, text),
+            new SendMessageRequest(
+                chatId,
+                text,
+                replyMarkup,
+                replyToMessageId.HasValue
+                    ? new TelegramReplyParameters(replyToMessageId.Value)
+                    : null),
             cancellationToken);
 
         await EnsureSuccessAsync(response, "sendMessage", cancellationToken);
@@ -57,6 +68,23 @@ public sealed class TelegramBotClient(
             cancellationToken);
 
         await EnsureSuccessAsync(response, "sendDocument", cancellationToken);
+    }
+
+    public async Task SetMessageReactionAsync(
+        long chatId,
+        long messageId,
+        string emoji,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync(
+            "setMessageReaction",
+            new SetMessageReactionRequest(
+                chatId,
+                messageId,
+                [new TelegramReaction("emoji", emoji)]),
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, "setMessageReaction", cancellationToken);
     }
 
     public async Task AnswerInlineQueryAsync(
@@ -101,8 +129,13 @@ public sealed class TelegramBotClient(
     private sealed record SendMessageRequest(
         [property: JsonPropertyName("chat_id")] long ChatId,
         [property: JsonPropertyName("text")] string Text,
+        [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
+        [property: JsonPropertyName("reply_parameters")] TelegramReplyParameters? ReplyParameters,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
         [property: JsonPropertyName("disable_web_page_preview")] bool DisableWebPagePreview = true);
+
+    private sealed record TelegramReplyParameters(
+        [property: JsonPropertyName("message_id")] long MessageId);
 
     private sealed record SendAnimationRequest(
         [property: JsonPropertyName("chat_id")] long ChatId,
@@ -118,6 +151,15 @@ public sealed class TelegramBotClient(
         [property: JsonPropertyName("reply_markup")] TelegramInlineKeyboardMarkup? ReplyMarkup,
         [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
         [property: JsonPropertyName("disable_content_type_detection")] bool DisableContentTypeDetection = true);
+
+    private sealed record SetMessageReactionRequest(
+        [property: JsonPropertyName("chat_id")] long ChatId,
+        [property: JsonPropertyName("message_id")] long MessageId,
+        [property: JsonPropertyName("reaction")] IReadOnlyList<TelegramReaction> Reaction);
+
+    private sealed record TelegramReaction(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("emoji")] string Emoji);
 
     private sealed record AnswerInlineQueryRequest(
         [property: JsonPropertyName("inline_query_id")] string InlineQueryId,

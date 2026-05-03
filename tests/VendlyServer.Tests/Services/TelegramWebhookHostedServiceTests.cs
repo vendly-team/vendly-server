@@ -60,7 +60,12 @@ public class TelegramWebhookHostedServiceTests
             return Task.CompletedTask;
         }
 
-        public Task SendMessageAsync(long chatId, string text, CancellationToken cancellationToken = default)
+        public Task SendMessageAsync(
+            long chatId,
+            string text,
+            CancellationToken cancellationToken = default,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            long? replyToMessageId = null)
         {
             SentMessages.Add((chatId, text));
             return Task.CompletedTask;
@@ -78,6 +83,12 @@ public class TelegramWebhookHostedServiceTests
             string documentUrl,
             string caption,
             TelegramInlineKeyboardMarkup? replyMarkup = null,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task SetMessageReactionAsync(
+            long chatId,
+            long messageId,
+            string emoji,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task AnswerInlineQueryAsync(
