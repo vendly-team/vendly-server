@@ -133,17 +133,28 @@ public class TelegramUpdateHandlerTests
         {
             Message = new TelegramMessage
             {
+                MessageId = 456,
                 Text = "/start",
                 From = new TelegramUser { Id = 123, Username = "timur_test" },
                 Chat = new TelegramChat { Id = 123, Username = "timur_test" }
             }
         });
 
+        var reaction = Assert.Single(_botClient.SentReactions);
+        Assert.Equal(123, reaction.ChatId);
+        Assert.Equal(456, reaction.MessageId);
+        Assert.NotEmpty(reaction.Emoji);
+
         var sentMessage = Assert.Single(_botClient.SentMessages);
         Assert.Equal(123, sentMessage.ChatId);
         Assert.Contains("Assalomu alaykum", sentMessage.Text);
-        Assert.Contains("Saved Messages", sentMessage.Text);
-        Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentMessage.Text);
+        Assert.Contains("Opto'ning rasmiy boti", sentMessage.Text);
+        Assert.Contains("Inline qidiruv", sentMessage.Text);
+        Assert.DoesNotContain("Vendly", sentMessage.Text);
+        Assert.DoesNotContain("Saved Messages", sentMessage.Text);
+        Assert.Equal(456, sentMessage.ReplyToMessageId);
+        Assert.Contains("🔎 Mahsulot qidirish", sentMessage.ReplyMarkup!.ToString());
+        Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentMessage.ReplyMarkup.ToString());
 
         var sentDocument = Assert.Single(_botClient.SentDocuments);
         Assert.Equal(123, sentDocument.ChatId);
@@ -162,6 +173,7 @@ public class TelegramUpdateHandlerTests
         {
             Message = new TelegramMessage
             {
+                MessageId = 456,
                 Text = "/start",
                 From = new TelegramUser { Id = 123, Username = "timur_test" },
                 Chat = new TelegramChat { Id = 123, Username = "timur_test" }
@@ -171,6 +183,7 @@ public class TelegramUpdateHandlerTests
         var sentMessage = Assert.Single(_botClient.SentMessages);
         Assert.Contains("Assalomu alaykum", sentMessage.Text);
         Assert.Empty(_botClient.SentDocuments);
+        Assert.Single(_botClient.SentAnimations);
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
@@ -178,15 +191,21 @@ public class TelegramUpdateHandlerTests
         public string? AnsweredInlineQueryId { get; private set; }
         public bool ShouldFailDocumentSend { get; set; }
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
-        public List<(long ChatId, string Text)> SentMessages { get; } = [];
+        public List<(long ChatId, string Text, TelegramInlineKeyboardMarkup? ReplyMarkup, long? ReplyToMessageId)> SentMessages { get; } = [];
         public List<(long ChatId, string AnimationUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentAnimations { get; } = [];
         public List<(long ChatId, string DocumentUrl, string Caption, TelegramInlineKeyboardMarkup? ReplyMarkup)> SentDocuments { get; } = [];
+        public List<(long ChatId, long MessageId, string Emoji)> SentReactions { get; } = [];
 
         public Task SetWebhookAsync(string url, string secretToken, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task SendMessageAsync(long chatId, string text, CancellationToken cancellationToken = default)
+        public Task SendMessageAsync(
+            long chatId,
+            string text,
+            CancellationToken cancellationToken = default,
+            TelegramInlineKeyboardMarkup? replyMarkup = null,
+            long? replyToMessageId = null)
         {
-            SentMessages.Add((chatId, text));
+            SentMessages.Add((chatId, text, replyMarkup, replyToMessageId));
             return Task.CompletedTask;
         }
 
@@ -212,6 +231,16 @@ public class TelegramUpdateHandlerTests
                 throw new HttpRequestException("Telegram rejected document.");
 
             SentDocuments.Add((chatId, documentUrl, caption, replyMarkup));
+            return Task.CompletedTask;
+        }
+
+        public Task SetMessageReactionAsync(
+            long chatId,
+            long messageId,
+            string emoji,
+            CancellationToken cancellationToken = default)
+        {
+            SentReactions.Add((chatId, messageId, emoji));
             return Task.CompletedTask;
         }
 

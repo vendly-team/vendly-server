@@ -17,7 +17,7 @@ public sealed class TelegramUpdateHandler(
 {
     private const int EmptyQueryCacheTimeSeconds = 5;
     private const int ResultCacheTimeSeconds = 30;
-    private static readonly string[] HappyCalmEmojis = ["🙂", "😊", "🤗", "😌", "✨", "🌟", "💫", "🙌", "👌", "👍", "💙", "💚"];
+    private static readonly string[] HappyCalmEmojis = ["👍", "❤", "🥰", "👏", "🎉", "🙏", "👌", "🤝", "🤗", "😇"];
     private readonly TelegramBotOptions _options = options.Value;
 
     public async Task HandleAsync(TelegramUpdate update, CancellationToken cancellationToken = default)
@@ -83,10 +83,14 @@ public sealed class TelegramUpdateHandler(
         if (message.Text.StartsWith("/start", StringComparison.OrdinalIgnoreCase))
         {
             var emoji = HappyCalmEmojis[Random.Shared.Next(HappyCalmEmojis.Length)];
+            await TrySetStartReactionAsync(message, emoji, cancellationToken);
+
             await botClient.SendMessageAsync(
                 message.Chat.Id,
-                BuildStartMessage(message, emoji),
-                cancellationToken);
+                BuildStartMessage(emoji),
+                cancellationToken,
+                BuildSearchKeyboard(message),
+                message.MessageId > 0 ? message.MessageId : null);
 
             try
             {
@@ -103,37 +107,93 @@ public sealed class TelegramUpdateHandler(
                     ex,
                     "Failed to send Telegram welcome document to chat {ChatId}.",
                     message.Chat.Id);
+
+                await TrySendWelcomeAnimationAsync(message.Chat.Id, cancellationToken);
             }
         }
     }
 
-    private static string BuildStartMessage(TelegramMessage message, string emoji)
+    private async Task TrySetStartReactionAsync(TelegramMessage message, string emoji, CancellationToken cancellationToken)
     {
-        var searchDeepLink = BuildSearchDeepLink(message);
-        var searchLine = string.IsNullOrWhiteSpace(searchDeepLink)
-            ? "🔎 Mahsulot qidirish uchun istalgan chatda <code>@optouzbot ab</code> yozing."
-            : $"🔎 Mahsulot qidirish uchun <a href=\"{EscapeHtml(searchDeepLink)}\">Saved Messages</a>ni oching.";
+        if (message.Chat is null || message.MessageId <= 0)
+            return;
 
+        try
+        {
+            await botClient.SetMessageReactionAsync(message.Chat.Id, message.MessageId, emoji, cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to set Telegram start reaction for chat {ChatId} and message {MessageId}.",
+                message.Chat.Id,
+                message.MessageId);
+        }
+    }
+
+    private async Task TrySendWelcomeAnimationAsync(long chatId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await botClient.SendAnimationAsync(
+                chatId,
+                BuildWelcomeGifUrl(),
+                "🎁 Xush kelibsiz!",
+                null,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to send Telegram welcome animation to chat {ChatId}.",
+                chatId);
+        }
+    }
+
+    private static string BuildStartMessage(string emoji)
+    {
         return $"""
                 {emoji} <b>Assalomu alaykum!</b>
 
-                Vendly botga xush kelibsiz.
+                Bu Opto'ning rasmiy boti.
 
-                {searchLine}
+                Mahsulotlarni tez qidirishingiz mumkin.
 
-                Masalan: <code>@optouzbot ab</code>
+                Inline qidiruv: istalgan chatda <code>@optouzbot</code> va mahsulot nomini yozing.
                 """;
     }
 
-    private static string? BuildSearchDeepLink(TelegramMessage message)
+    private static TelegramInlineKeyboardMarkup BuildSearchKeyboard(TelegramMessage message)
+    {
+        return new TelegramInlineKeyboardMarkup
+        {
+            InlineKeyboard =
+            [
+                [
+                    new TelegramInlineKeyboardButton
+                    {
+                        Text = "🔎 Mahsulot qidirish",
+                        Url = BuildSearchDeepLink(message)
+                    }
+                ]
+            ]
+        };
+    }
+
+    private static string BuildSearchDeepLink(TelegramMessage message)
     {
         var username = (message.From?.Username ?? message.Chat?.Username)?.Trim().TrimStart('@');
-        if (string.IsNullOrWhiteSpace(username))
-            return null;
-
-        var encodedUsername = Uri.EscapeDataString(username);
         var encodedText = Uri.EscapeDataString("@optouzbot ab");
-        return $"https://t.me/{encodedUsername}?text={encodedText}".Trim();
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            var encodedUsername = Uri.EscapeDataString(username);
+            return $"https://t.me/{encodedUsername}?text={encodedText}".Trim();
+        }
+
+        return $"https://t.me/share/url?text={encodedText}".Trim();
     }
 
     private string BuildWelcomeGifUrl()

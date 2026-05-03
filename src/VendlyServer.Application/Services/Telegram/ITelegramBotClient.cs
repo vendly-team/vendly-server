@@ -6,7 +6,12 @@ public interface ITelegramBotClient
 {
     Task SetWebhookAsync(string url, string secretToken, CancellationToken cancellationToken = default);
 
-    Task SendMessageAsync(long chatId, string text, CancellationToken cancellationToken = default);
+    Task SendMessageAsync(
+        long chatId,
+        string text,
+        CancellationToken cancellationToken = default,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        long? replyToMessageId = null);
 
     Task SendAnimationAsync(
         long chatId,
@@ -20,6 +25,12 @@ public interface ITelegramBotClient
         string documentUrl,
         string caption,
         TelegramInlineKeyboardMarkup? replyMarkup = null,
+        CancellationToken cancellationToken = default);
+
+    Task SetMessageReactionAsync(
+        long chatId,
+        long messageId,
+        string emoji,
         CancellationToken cancellationToken = default);
 
     Task AnswerInlineQueryAsync(
