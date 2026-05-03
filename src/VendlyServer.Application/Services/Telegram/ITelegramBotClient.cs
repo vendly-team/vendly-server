@@ -13,20 +13,6 @@ public interface ITelegramBotClient
         TelegramInlineKeyboardMarkup? replyMarkup = null,
         long? replyToMessageId = null);
 
-    Task SendAnimationAsync(
-        long chatId,
-        string animationUrl,
-        string caption,
-        TelegramInlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken cancellationToken = default);
-
-    Task SendDocumentAsync(
-        long chatId,
-        string documentUrl,
-        string caption,
-        TelegramInlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken cancellationToken = default);
-
     Task SetMessageReactionAsync(
         long chatId,
         long messageId,

@@ -40,36 +40,6 @@ public sealed class TelegramBotClient(
         await EnsureSuccessAsync(response, "sendMessage", cancellationToken);
     }
 
-    public async Task SendAnimationAsync(
-        long chatId,
-        string animationUrl,
-        string caption,
-        TelegramInlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await httpClient.PostAsJsonAsync(
-            "sendAnimation",
-            new SendAnimationRequest(chatId, animationUrl, caption, replyMarkup),
-            cancellationToken);
-
-        await EnsureSuccessAsync(response, "sendAnimation", cancellationToken);
-    }
-
-    public async Task SendDocumentAsync(
-        long chatId,
-        string documentUrl,
-        string caption,
-        TelegramInlineKeyboardMarkup? replyMarkup = null,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await httpClient.PostAsJsonAsync(
-            "sendDocument",
-            new SendDocumentRequest(chatId, documentUrl, caption, replyMarkup),
-            cancellationToken);
-
-        await EnsureSuccessAsync(response, "sendDocument", cancellationToken);
-    }
-
     public async Task SetMessageReactionAsync(
         long chatId,
         long messageId,
@@ -140,25 +110,6 @@ public sealed class TelegramBotClient(
 
     private sealed record TelegramReplyParameters(
         [property: JsonPropertyName("message_id")] long MessageId);
-
-    private sealed record SendAnimationRequest(
-        [property: JsonPropertyName("chat_id")] long ChatId,
-        [property: JsonPropertyName("animation")] string Animation,
-        [property: JsonPropertyName("caption")] string Caption,
-        [property: JsonPropertyName("reply_markup")]
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        TelegramInlineKeyboardMarkup? ReplyMarkup,
-        [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML");
-
-    private sealed record SendDocumentRequest(
-        [property: JsonPropertyName("chat_id")] long ChatId,
-        [property: JsonPropertyName("document")] string Document,
-        [property: JsonPropertyName("caption")] string Caption,
-        [property: JsonPropertyName("reply_markup")]
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        TelegramInlineKeyboardMarkup? ReplyMarkup,
-        [property: JsonPropertyName("parse_mode")] string ParseMode = "HTML",
-        [property: JsonPropertyName("disable_content_type_detection")] bool DisableContentTypeDetection = true);
 
     private sealed record SetMessageReactionRequest(
         [property: JsonPropertyName("chat_id")] long ChatId,
