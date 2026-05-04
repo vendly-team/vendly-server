@@ -108,11 +108,11 @@ public static class Dependencies
     {
         _ = builder.Configuration.AddJsonFile(
             Path.Join(AppContext.BaseDirectory,
-                $"appsettings.{builder.Environment.EnvironmentName}.json"),
+                $"appsettings.json"),
             optional: false);
         _ = builder.Configuration.AddJsonFile(
             Path.Join(AppContext.BaseDirectory,
-                $"appsettings.json"),
+                $"appsettings.{builder.Environment.EnvironmentName}.json"),
             optional: false);
         builder.Configuration.AddEnvironmentVariables();
 
