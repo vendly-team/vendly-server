@@ -179,11 +179,11 @@ jobs:
                 container_name: vendly-seq-staging
                 restart: unless-stopped
                 ports:
-                  - "5342:5341"
-                  - "8083:80"
+                  - "127.0.0.1:5342:5341"
+                  - "127.0.0.1:8083:80"
                 environment:
                   - ACCEPT_EULA=Y
-                  - SEQ_FIRSTRUN_ADMINPASSWORD=Vendly@SeqStage2026!
+                  - SEQ_FIRSTRUN_ADMINPASSWORD=${{ secrets.SEQ_STAGE_ADMIN_PASSWORD }}
                 volumes:
                   - seq-staging-data:/data
                 networks:
@@ -252,11 +252,11 @@ jobs:
                 container_name: vendly-seq-prod
                 restart: unless-stopped
                 ports:
-                  - "5341:5341"
-                  - "8082:80"
+                  - "127.0.0.1:5341:5341"
+                  - "127.0.0.1:8082:80"
                 environment:
                   - ACCEPT_EULA=Y
-                  - SEQ_FIRSTRUN_ADMINPASSWORD=Vendly@SeqProd2026!
+                  - SEQ_FIRSTRUN_ADMINPASSWORD=${{ secrets.SEQ_PROD_ADMIN_PASSWORD }}
                 volumes:
                   - seq-prod-data:/data
                 networks:
