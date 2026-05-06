@@ -80,6 +80,16 @@ public class BtsRefService(AppDbContext dbContext) : IBtsRefService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<Result<List<BtsCityResponse>>> GetCitiesByRegionAsync(string regionCode, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.BtsCities
+            .AsNoTracking()
+            .Where(c => c.RegionCode == regionCode)
+            .OrderBy(c => c.Name)
+            .Select(c => new BtsCityResponse { Id = c.Id, RegionCode = c.RegionCode, Code = c.Code, Name = c.Name, SyncedAt = c.SyncedAt })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Result<BtsCityResponse>> GetCityByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var city = await dbContext.BtsCities

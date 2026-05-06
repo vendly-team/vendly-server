@@ -13,6 +13,7 @@ using VendlyServer.Application.Services.RecentlyViewed;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Application.Services.Wishlists;
 using VendlyServer.Application.Services.Currencies;
+using VendlyServer.Application.Services.Addresses;
 using VendlyServer.Application.Services.Categories;
 
 namespace VendlyServer.Application;
@@ -28,6 +29,7 @@ public static class Dependencies
 
         services.AddValidatorsFromAssembly(typeof(Dependencies).Assembly);
 
+        services.AddScoped<IAddressService, AddressService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IBtsRefService, BtsRefService>();
         services.AddScoped<IWishlistService, WishlistService>();
