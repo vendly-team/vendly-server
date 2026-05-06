@@ -86,25 +86,6 @@ public sealed class TelegramUpdateHandler(
             await TrySetStartReactionAsync(message, emoji, cancellationToken);
 
             await SendStartMessageAsync(message, emoji, cancellationToken);
-
-            try
-            {
-                await botClient.SendDocumentAsync(
-                    message.Chat.Id,
-                    BuildWelcomeGifUrl(),
-                    "🎁 Xush kelibsiz!",
-                    null,
-                    cancellationToken);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-            {
-                logger.LogWarning(
-                    ex,
-                    "Failed to send Telegram welcome document to chat {ChatId}.",
-                    message.Chat.Id);
-
-                await TrySendWelcomeAnimationAsync(message.Chat.Id, cancellationToken);
-            }
         }
     }
 
@@ -152,26 +133,6 @@ public sealed class TelegramUpdateHandler(
                 "Failed to set Telegram start reaction for chat {ChatId} and message {MessageId}.",
                 message.Chat.Id,
                 message.MessageId);
-        }
-    }
-
-    private async Task TrySendWelcomeAnimationAsync(long chatId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await botClient.SendAnimationAsync(
-                chatId,
-                BuildWelcomeGifUrl(),
-                "🎁 Xush kelibsiz!",
-                null,
-                cancellationToken);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
-            logger.LogWarning(
-                ex,
-                "Failed to send Telegram welcome animation to chat {ChatId}.",
-                chatId);
         }
     }
 
@@ -228,11 +189,6 @@ public sealed class TelegramUpdateHandler(
         }
 
         return $"https://t.me/share/url?text={encodedText}".Trim();
-    }
-
-    private string BuildWelcomeGifUrl()
-    {
-        return $"{_options.PublicBaseUrl.TrimEnd('/')}/tgbot-welcome.gif";
     }
 
     private async Task<Dictionary<string, object?>> BuildInlineResultAsync(

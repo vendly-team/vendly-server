@@ -71,20 +71,6 @@ public class TelegramWebhookHostedServiceTests
             return Task.CompletedTask;
         }
 
-        public Task SendAnimationAsync(
-            long chatId,
-            string animationUrl,
-            string caption,
-            TelegramInlineKeyboardMarkup? replyMarkup = null,
-            CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task SendDocumentAsync(
-            long chatId,
-            string documentUrl,
-            string caption,
-            TelegramInlineKeyboardMarkup? replyMarkup = null,
-            CancellationToken cancellationToken = default) => Task.CompletedTask;
-
         public Task SetMessageReactionAsync(
             long chatId,
             long messageId,
