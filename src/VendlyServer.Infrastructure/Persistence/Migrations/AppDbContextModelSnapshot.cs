@@ -348,6 +348,55 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     b.ToTable("product_variants", "catalogs");
                 });
 
+            modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.RecentlyViewedProduct", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<long>("ProductId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("product_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("viewed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recently_viewed_products");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_recently_viewed_products_product_id");
+
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_recently_viewed_products_user_id_product_id");
+
+                    b.HasIndex("UserId", "ViewedAt")
+                        .HasDatabaseName("ix_recently_viewed_products_user_id_viewed_at");
+
+                    b.ToTable("recently_viewed_products", "catalogs");
+                });
+
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Review", b =>
                 {
                     b.Property<long>("Id")
@@ -1787,6 +1836,27 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.RecentlyViewedProduct", b =>
+                {
+                    b.HasOne("VendlyServer.Domain.Entities.Catalogs.Product", "Product")
+                        .WithMany("RecentlyViewedProducts")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_recently_viewed_products_products_product_id");
+
+                    b.HasOne("VendlyServer.Domain.Entities.Public.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_recently_viewed_products_users_user_id");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Review", b =>
                 {
                     b.HasOne("VendlyServer.Domain.Entities.Orders.Order", "Order")
@@ -2113,6 +2183,8 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Product", b =>
                 {
                     b.Navigation("DiscountProducts");
+
+                    b.Navigation("RecentlyViewedProducts");
 
                     b.Navigation("Reviews");
 

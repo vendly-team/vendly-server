@@ -1,9 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using VendlyServer.Api.Controllers.Common;
-using VendlyServer.Application.Services.Category;
-using VendlyServer.Application.Services.Category.Contracts;
-using VendlyServer.Infrastructure.Extensions;
+using VendlyServer.Application.Services.Categories;
+using VendlyServer.Application.Services.Categories.Contracts;
 
 namespace VendlyServer.Api.Controllers.Catalog;
 

@@ -1,7 +1,6 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
 using VendlyServer.Application.Services.Telegram;
 using VendlyServer.Application.Services.Telegram.Contracts;
 

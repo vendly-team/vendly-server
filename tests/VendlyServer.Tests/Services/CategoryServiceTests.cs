@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using VendlyServer.Application.Services.Category;
-using VendlyServer.Application.Services.Category.Contracts;
-using VendlyServer.Application.Services.Storage;
+using VendlyServer.Application.Services.Categories;
+using VendlyServer.Application.Services.Categories.Contracts;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Infrastructure.Persistence;

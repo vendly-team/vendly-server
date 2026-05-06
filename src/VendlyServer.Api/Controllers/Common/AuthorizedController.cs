@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using VendlyServer.Infrastructure.Authentication;
 
 namespace VendlyServer.Api.Controllers.Common;
