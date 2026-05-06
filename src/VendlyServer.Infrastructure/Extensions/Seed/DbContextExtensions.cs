@@ -13,8 +13,23 @@ public static class DbContextExtensions
         public async Task SeedAsync()
         {
             IPasswordHasher passwordHasher = new PasswordHasher();
-        
+
             await dbContext.SeedUsersAsync(passwordHasher);
+            await dbContext.SeedBtsRefAsync();
+        }
+
+        private async Task SeedBtsRefAsync()
+        {
+            var hasRegions = await dbContext.BtsRegions.AnyAsync();
+            if (hasRegions) return;
+
+            var now = DateTime.UtcNow;
+
+            dbContext.BtsRegions.AddRange(BtsRefSeedData.Regions(now));
+            await dbContext.SaveChangesAsync();
+
+            dbContext.BtsCities.AddRange(BtsRefSeedData.Cities(now));
+            await dbContext.SaveChangesAsync();
         }
 
         private async Task SeedUsersAsync(IPasswordHasher passwordHasher)

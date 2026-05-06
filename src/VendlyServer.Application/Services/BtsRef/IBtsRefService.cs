@@ -13,6 +13,7 @@ public interface IBtsRefService
 
     // Cities
     Task<Result<List<BtsCityResponse>>> GetAllCitiesAsync(CancellationToken cancellationToken = default);
+    Task<Result<List<BtsCityResponse>>> GetCitiesByRegionAsync(string regionCode, CancellationToken cancellationToken = default);
     Task<Result<BtsCityResponse>> GetCityByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<Result> AddCityAsync(SaveBtsCityRequest request, CancellationToken cancellationToken = default);
     Task<Result> UpdateCityAsync(long id, SaveBtsCityRequest request, CancellationToken cancellationToken = default);
