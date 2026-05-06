@@ -1,0 +1,27 @@
+using VendlyServer.Application.Services.Telegram.Contracts;
+
+namespace VendlyServer.Application.Services.Telegram;
+
+public interface ITelegramBotClient
+{
+    Task SetWebhookAsync(string url, string secretToken, CancellationToken cancellationToken = default);
+
+    Task SendMessageAsync(
+        long chatId,
+        string text,
+        CancellationToken cancellationToken = default,
+        TelegramInlineKeyboardMarkup? replyMarkup = null,
+        long? replyToMessageId = null);
+
+    Task SetMessageReactionAsync(
+        long chatId,
+        long messageId,
+        string emoji,
+        CancellationToken cancellationToken = default);
+
+    Task AnswerInlineQueryAsync(
+        string inlineQueryId,
+        IReadOnlyList<Dictionary<string, object?>> results,
+        int cacheTimeSeconds,
+        CancellationToken cancellationToken = default);
+}

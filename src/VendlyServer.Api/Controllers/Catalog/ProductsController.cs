@@ -18,6 +18,15 @@ public class ProductsController(IProductService productService) : AuthorizedCont
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
+    /// <summary>Search active products for storefront display.</summary>
+    [HttpGet("search")]
+    [AllowAnonymous]
+    public async Task<IResult> SearchAsync([FromQuery] string q, CancellationToken ct = default)
+    {
+        var result = await productService.SearchAsync(q, ct);
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
+    }
+
     /// <summary>Get product detail with variant types, options, and variants.</summary>
     [HttpGet("{id:long}")]
     [AllowAnonymous]

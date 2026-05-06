@@ -26,7 +26,7 @@ public class AuthService(
         if (user.IsBlocked)
             return AuthErrors.UserBlocked;
 
-        return await CreateAuthResponseAsync(user.Id, user.Email, user.Role, cancellationToken);
+        return await CreateAuthResponseAsync(user, cancellationToken);
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -50,7 +50,7 @@ public class AuthService(
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return await CreateAuthResponseAsync(user.Id, user.Email, user.Role, cancellationToken);
+        return await CreateAuthResponseAsync(user, cancellationToken);
     }
 
     public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
@@ -62,13 +62,27 @@ public class AuthService(
         if (stored is null || stored.IsRevoked || stored.ExpiresAt < DateTime.UtcNow)
             return AuthErrors.InvalidRefreshToken;
 
+        if (stored.User.IsDeleted)
+            return AuthErrors.InvalidRefreshToken;
+
         if (stored.User.IsBlocked)
             return AuthErrors.UserBlocked;
 
         stored.IsRevoked = true;
+
+        var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        var accessToken = jwtProvider.GenerateToken(stored.User.Id, stored.User.Email ?? string.Empty, stored.User.Role.ToString());
+
+        dbContext.RefreshTokens.Add(new RefreshToken
+        {
+            UserId    = stored.User.Id,
+            Token     = rawToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(30)
+        });
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return await CreateAuthResponseAsync(stored.User.Id, stored.User.Email, stored.User.Role, cancellationToken);
+        return new AuthResponse(accessToken, rawToken, ToUserInfo(stored.User));
     }
 
     public async Task<Result> LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
@@ -77,7 +91,7 @@ public class AuthService(
             .SingleOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsDeleted, cancellationToken);
 
         if (stored is null || stored.IsRevoked)
-            return AuthErrors.InvalidRefreshToken;
+            return Result.Success();
 
         stored.IsRevoked = true;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -85,22 +99,33 @@ public class AuthService(
         return Result.Success();
     }
 
-    private async Task<AuthResponse> CreateAuthResponseAsync(
-        long userId, string? email, UserRole role, CancellationToken cancellationToken)
+    public async Task<Result<UserInfo>> GetMeAsync(long userId, CancellationToken cancellationToken = default)
     {
-        var accessToken = jwtProvider.GenerateToken(userId, email ?? string.Empty, role.ToString());
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId && !u.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
 
+        return user is null ? AuthErrors.UserNotFound : ToUserInfo(user);
+    }
+
+    private async Task<AuthResponse> CreateAuthResponseAsync(User user, CancellationToken cancellationToken)
+    {
+        var accessToken = jwtProvider.GenerateToken(user.Id, user.Email ?? string.Empty, user.Role.ToString());
         var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
-            UserId    = userId,
+            UserId    = user.Id,
             Token     = rawToken,
             ExpiresAt = DateTime.UtcNow.AddDays(30)
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(accessToken, rawToken);
+        return new AuthResponse(accessToken, rawToken, ToUserInfo(user));
     }
+
+    private static UserInfo ToUserInfo(User user) =>
+        new(user.Id, user.FirstName, user.LastName, user.Email, user.Phone, user.Role.ToString().ToLowerInvariant());
 }

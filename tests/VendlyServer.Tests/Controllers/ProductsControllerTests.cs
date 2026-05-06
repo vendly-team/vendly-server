@@ -47,6 +47,30 @@ public class ProductsControllerTests
         Assert.IsType<ProblemHttpResult>(result);
     }
 
+    [Fact]
+    public async Task Search_Returns200_WithSearchResults()
+    {
+        _svc.SearchResult = Result<List<ProductSearchResponse>>.Success(
+        [
+            new(1, "Phone", 99.99m, 2, ["phone-red.jpg"], true, "https://client.example.com/product/phone-1")
+        ]);
+
+        var result = await CreateController().SearchAsync("phone");
+
+        var ok = Assert.IsType<Ok<List<ProductSearchResponse>>>(result);
+        Assert.Single(ok.Value!);
+    }
+
+    [Fact]
+    public async Task Search_ReturnsProblem_OnFailure()
+    {
+        _svc.SearchResult = Result<List<ProductSearchResponse>>.Failure(ProductErrors.NotFound);
+
+        var result = await CreateController().SearchAsync("x");
+
+        Assert.IsType<ProblemHttpResult>(result);
+    }
+
     // ── GetByIdAsync ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -361,6 +385,7 @@ public class ProductsControllerTests
     private class FakeProductService : IProductService
     {
         public Result<List<ProductListResponse>> GetAllResult { get; set; } = Result<List<ProductListResponse>>.Success([]);
+        public Result<List<ProductSearchResponse>> SearchResult { get; set; } = Result<List<ProductSearchResponse>>.Success([]);
         public Result<ProductAdminDetailResponse> GetByIdResult { get; set; } = Result<ProductAdminDetailResponse>.Success(
             new(1, 1, "Cat", "Prod", null, SyncSource.Manual, true, [], [], DateTime.UtcNow, null));
         public Result<long> CreateResult { get; set; } = Result<long>.Success(1);
@@ -377,6 +402,7 @@ public class ProductsControllerTests
         public Result DeleteVariantResult { get; set; } = Result.Success();
 
         public Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default) => Task.FromResult(GetAllResult);
+        public Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default) => Task.FromResult(SearchResult);
         public Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default) => Task.FromResult(GetByIdResult);
         public Task<Result<long>> CreateAsync(CreateProductRequest r, CancellationToken ct = default) => Task.FromResult(CreateResult);
         public Task<Result> UpdateAsync(long id, UpdateProductRequest r, CancellationToken ct = default) => Task.FromResult(UpdateResult);
