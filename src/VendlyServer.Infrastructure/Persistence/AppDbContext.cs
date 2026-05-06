@@ -25,7 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<VariantOptionValue> VariantOptionValues { get; set; }
     public DbSet<VariantType> VariantTypes { get; set; }
     public DbSet<Wishlist> Wishlists { get; set; }
-    
+    public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+
     #endregion Catalog
 
     // orders
@@ -80,6 +81,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         
         modelBuilder.Entity<Wishlist>()
             .HasIndex(x => new { x.UserId, x.ProductId }).IsUnique();
+
+        modelBuilder.Entity<RecentlyViewedProduct>(entity =>
+        {
+            entity.HasIndex(x => new { x.UserId, x.ProductId }).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.ViewedAt });
+        });
 
         modelBuilder.Entity<Discount>()
             .Property(x => x.Value).HasPrecision(10, 2);

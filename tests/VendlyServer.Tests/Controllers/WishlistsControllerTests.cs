@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Catalog;
-using VendlyServer.Application.Services.Wishlist;
-using VendlyServer.Application.Services.Wishlist.Contracts;
+using VendlyServer.Application.Services.Wishlists;
+using VendlyServer.Application.Services.Wishlists.Contracts;
 using VendlyServer.Domain.Abstractions;
 
 namespace VendlyServer.Tests.Controllers;

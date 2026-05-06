@@ -29,6 +29,7 @@ public class Product : AuditableModelBase<long>
     public ICollection<VariantType> VariantTypes { get; set; } = [];
     public ICollection<ProductVariant> Variants { get; set; } = [];
     public ICollection<Wishlist> Wishlists { get; set; } = [];
+    public ICollection<RecentlyViewedProduct> RecentlyViewedProducts { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<DiscountProduct> DiscountProducts { get; set; } = [];
 }

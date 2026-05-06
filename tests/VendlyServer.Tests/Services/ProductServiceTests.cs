@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using VendlyServer.Application;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
-using VendlyServer.Application.Services.Storage;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Domain.Enums;

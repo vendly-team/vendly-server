@@ -1,9 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.Auth.Contracts;
-using VendlyServer.Infrastructure.Extensions;
 
 namespace VendlyServer.Api.Controllers.Public;
 

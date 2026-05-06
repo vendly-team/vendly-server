@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using VendlyServer.Application.Services.Currency;
-using VendlyServer.Application.Services.Currency.Contracts;
+using VendlyServer.Application.Services.Currencies;
 
 namespace VendlyServer.Tests.Services;
 

@@ -6,13 +6,14 @@ using VendlyServer.Application.Jobs.Auth;
 using VendlyServer.Application.Jobs.BtsCatalog;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.BtsRef;
-using VendlyServer.Application.Services.Category;
-using VendlyServer.Application.Services.Currency;
 using VendlyServer.Application.Services.Products;
-using VendlyServer.Application.Services.Storage;
 using VendlyServer.Application.Services.Telegram;
 using VendlyServer.Application.Services.Users;
-using VendlyServer.Application.Services.Wishlist;
+using VendlyServer.Application.Services.RecentlyViewed;
+using VendlyServer.Application.Services.Storages;
+using VendlyServer.Application.Services.Wishlists;
+using VendlyServer.Application.Services.Currencies;
+using VendlyServer.Application.Services.Categories;
 
 namespace VendlyServer.Application;
 
@@ -30,6 +31,7 @@ public static class Dependencies
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IBtsRefService, BtsRefService>();
         services.AddScoped<IWishlistService, WishlistService>();
+        services.AddScoped<IRecentlyViewedService, RecentlyViewedService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProductService, ProductService>();

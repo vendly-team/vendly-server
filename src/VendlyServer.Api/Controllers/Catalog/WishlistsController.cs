@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Common;
-using VendlyServer.Application.Services.Wishlist;
-using VendlyServer.Application.Services.Wishlist.Contracts;
-using VendlyServer.Infrastructure.Extensions;
+using VendlyServer.Application.Services.Wishlists;
+using VendlyServer.Application.Services.Wishlists.Contracts;
 
 namespace VendlyServer.Api.Controllers.Catalog;
 

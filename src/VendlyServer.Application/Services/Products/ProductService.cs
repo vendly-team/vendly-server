@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Products.Contracts;
-using VendlyServer.Application.Services.Storage;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Infrastructure.Persistence;

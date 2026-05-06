@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Services.Products;
 using VendlyServer.Application.Services.Products.Contracts;
