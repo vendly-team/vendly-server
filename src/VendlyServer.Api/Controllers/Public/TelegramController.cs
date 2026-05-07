@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Cryptography;
+using System.Text;
 using VendlyServer.Application.Services.Telegram;
 using VendlyServer.Application.Services.Telegram.Contracts;
 
@@ -34,6 +36,8 @@ public sealed class TelegramController(
             return false;
 
         return Request.Headers.TryGetValue(SecretTokenHeaderName, out var actualSecretToken) &&
-               string.Equals(actualSecretToken.ToString(), _options.WebhookSecretToken, StringComparison.Ordinal);
+               CryptographicOperations.FixedTimeEquals(
+                   Encoding.UTF8.GetBytes(actualSecretToken.ToString()),
+                   Encoding.UTF8.GetBytes(_options.WebhookSecretToken));
     }
 }
