@@ -38,9 +38,9 @@ public class ProductService(
         return products;
     }
 
-    public async Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default)
+    public async Task<Result<List<ProductSearchResponse>>> SearchAsync(string? query, CancellationToken ct = default)
     {
-        var normalizedQuery = query.Trim().ToLower();
+        var normalizedQuery = query?.Trim().ToLower() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 2)
             return new List<ProductSearchResponse>();
