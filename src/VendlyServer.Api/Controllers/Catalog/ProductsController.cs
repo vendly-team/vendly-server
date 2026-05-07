@@ -21,7 +21,7 @@ public class ProductsController(IProductService productService) : AuthorizedCont
     /// <summary>Search active products for storefront display.</summary>
     [HttpGet("search")]
     [AllowAnonymous]
-    public async Task<IResult> SearchAsync([FromQuery] string q, CancellationToken ct = default)
+    public async Task<IResult> SearchAsync([FromQuery] string? q, CancellationToken ct = default)
     {
         var result = await productService.SearchAsync(q, ct);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
