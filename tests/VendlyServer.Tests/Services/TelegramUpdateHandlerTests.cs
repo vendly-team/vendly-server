@@ -182,10 +182,32 @@ public class TelegramUpdateHandlerTests
         Assert.Null(sentMessage.ReplyToMessageId);
     }
 
+    [Fact]
+    public async Task HandleAsync_CompletesWithoutThrowing_WhenBothRichAndFallbackStartMessageFail()
+    {
+        _botClient.ShouldFailRichMessageSend = true;
+        _botClient.ShouldFailFallbackMessageSend = true;
+
+        await _handler.HandleAsync(new TelegramUpdate
+        {
+            Message = new TelegramMessage
+            {
+                MessageId = 456,
+                Text = "/start",
+                From = new TelegramUser { Id = 123, Username = "timur_test" },
+                Chat = new TelegramChat { Id = 123, Username = "timur_test" }
+            }
+        });
+
+        Assert.Equal(2, _botClient.SendMessageAttempts);
+        Assert.Empty(_botClient.SentMessages);
+    }
+
     private sealed class FakeTelegramBotClient : ITelegramBotClient
     {
         public string? AnsweredInlineQueryId { get; private set; }
         public bool ShouldFailRichMessageSend { get; set; }
+        public bool ShouldFailFallbackMessageSend { get; set; }
         public int SendMessageAttempts { get; private set; }
         public List<Dictionary<string, object?>> AnsweredResults { get; private set; } = [];
         public List<(long ChatId, string Text, TelegramInlineKeyboardMarkup? ReplyMarkup, long? ReplyToMessageId)> SentMessages { get; } = [];
@@ -203,6 +225,8 @@ public class TelegramUpdateHandlerTests
             SendMessageAttempts++;
             if (ShouldFailRichMessageSend && replyMarkup is not null)
                 throw new HttpRequestException("Telegram rejected rich message.");
+            if (ShouldFailFallbackMessageSend && replyMarkup is null)
+                throw new HttpRequestException("Telegram rejected fallback message.");
 
             SentMessages.Add((chatId, text, replyMarkup, replyToMessageId));
             return Task.CompletedTask;
