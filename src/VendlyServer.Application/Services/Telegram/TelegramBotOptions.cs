@@ -7,6 +7,7 @@ public sealed class TelegramBotOptions
 {
     public bool Enabled { get; set; }
     public string Token { get; set; } = string.Empty;
+    public string BotUsername { get; set; } = string.Empty;
     public string PublicBaseUrl { get; set; } = string.Empty;
     public string MiniAppUrl { get; set; } = string.Empty;
     public string WebhookSecretToken { get; set; } = string.Empty;
