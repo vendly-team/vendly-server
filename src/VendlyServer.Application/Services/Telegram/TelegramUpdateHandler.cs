@@ -94,13 +94,15 @@ public sealed class TelegramUpdateHandler(
         if (message.Chat is null)
             return;
 
+        var botUsername = _options.BotUsername;
+
         try
         {
             await botClient.SendMessageAsync(
                 message.Chat.Id,
-                BuildStartMessage(emoji),
+                BuildStartMessage(emoji, botUsername),
                 cancellationToken,
-                BuildSearchKeyboard(message),
+                BuildSearchKeyboard(message, botUsername),
                 message.MessageId > 0 ? message.MessageId : null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
@@ -112,7 +114,7 @@ public sealed class TelegramUpdateHandler(
 
             await botClient.SendMessageAsync(
                 message.Chat.Id,
-                BuildFallbackStartMessage(emoji),
+                BuildFallbackStartMessage(emoji, botUsername),
                 cancellationToken);
         }
     }
@@ -136,7 +138,7 @@ public sealed class TelegramUpdateHandler(
         }
     }
 
-    private static string BuildStartMessage(string emoji)
+    private static string BuildStartMessage(string emoji, string botUsername)
     {
         return $"""
                 {emoji} <b>Assalomu alaykum!</b>
@@ -145,22 +147,22 @@ public sealed class TelegramUpdateHandler(
 
                 Mahsulotlarni tez qidirishingiz mumkin.
 
-                Inline qidiruv: istalgan chatda <code>@optouzbot</code> va mahsulot nomini yozing.
+                Inline qidiruv: istalgan chatda <code>@{botUsername}</code> va mahsulot nomini yozing.
                 """;
     }
 
-    private static string BuildFallbackStartMessage(string emoji)
+    private static string BuildFallbackStartMessage(string emoji, string botUsername)
     {
         return $"""
                 {emoji} Assalomu alaykum!
 
                 Bu Opto'ning rasmiy boti.
 
-                Mahsulot qidirish uchun istalgan chatda @optouzbot va mahsulot nomini yozing.
+                Mahsulot qidirish uchun istalgan chatda @{botUsername} va mahsulot nomini yozing.
                 """;
     }
 
-    private static TelegramInlineKeyboardMarkup BuildSearchKeyboard(TelegramMessage message)
+    private static TelegramInlineKeyboardMarkup BuildSearchKeyboard(TelegramMessage message, string botUsername)
     {
         return new TelegramInlineKeyboardMarkup
         {
@@ -170,17 +172,17 @@ public sealed class TelegramUpdateHandler(
                     new TelegramInlineKeyboardButton
                     {
                         Text = "🔎 Mahsulot qidirish",
-                        Url = BuildSearchDeepLink(message)
+                        Url = BuildSearchDeepLink(message, botUsername)
                     }
                 ]
             ]
         };
     }
 
-    private static string BuildSearchDeepLink(TelegramMessage message)
+    private static string BuildSearchDeepLink(TelegramMessage message, string botUsername)
     {
         var username = (message.From?.Username ?? message.Chat?.Username)?.Trim().TrimStart('@');
-        var encodedText = Uri.EscapeDataString("@optouzbot ab");
+        var encodedText = Uri.EscapeDataString($"@{botUsername} ab");
 
         if (!string.IsNullOrWhiteSpace(username))
         {
