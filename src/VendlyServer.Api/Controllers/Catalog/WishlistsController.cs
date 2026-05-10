@@ -29,7 +29,7 @@ public class WishlistsController(IWishlistService wishlistService) : AuthorizedC
     public async Task<IResult> AddAsync([FromBody] AddWishlistRequest request, CancellationToken cancellationToken = default)
     {
         var result = await wishlistService.AddAsync(UserId, request, cancellationToken);
-        return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
     /// <summary>Remove product from wishlist.</summary>

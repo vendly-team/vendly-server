@@ -20,17 +20,19 @@ public static class ResultExtensions
 
     private static int GetStatusCode(ErrorType errorType) => errorType switch
     {
-        ErrorType.Validation => StatusCodes.Status400BadRequest,
-        ErrorType.NotFound => StatusCodes.Status404NotFound,
-        ErrorType.Conflict => StatusCodes.Status409Conflict,
-        _ => StatusCodes.Status500InternalServerError
+        ErrorType.Validation   => StatusCodes.Status400BadRequest,
+        ErrorType.NotFound     => StatusCodes.Status404NotFound,
+        ErrorType.Conflict     => StatusCodes.Status409Conflict,
+        ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
+        _                      => StatusCodes.Status400BadRequest
     };
 
     private static string GetTitle(ErrorType errorType) => errorType switch
     {
-        ErrorType.Validation => "Bad Request",
-        ErrorType.NotFound => "Not Found",
-        ErrorType.Conflict => "Conflict",
-        _ => "Internal Server Error"
+        ErrorType.Validation   => "Bad Request",
+        ErrorType.NotFound     => "Not Found",
+        ErrorType.Conflict     => "Conflict",
+        ErrorType.Unauthorized => "Unauthorized",
+        _                      => "Bad Request"
     };
 }

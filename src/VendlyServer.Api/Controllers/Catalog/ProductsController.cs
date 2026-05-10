@@ -9,12 +9,21 @@ namespace VendlyServer.Api.Controllers.Catalog;
 [Route("api/products")]
 public class ProductsController(IProductService productService) : AuthorizedController
 {
-    /// <summary>Get all products.</summary>
+    /// <summary>Get paginated active products for storefront. Supports categoryId filter.</summary>
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IResult> GetAllAsync(CancellationToken ct = default)
+    public async Task<IResult> GetAllAsync([FromQuery] ProductFilterRequest request, CancellationToken ct = default)
     {
-        var result = await productService.GetAllAsync(ct);
+        var result = await productService.GetAllAsync(request, ct);
+        return Results.Ok(result);
+    }
+
+    /// <summary>Get all products for admin panel (includes inactive products).</summary>
+    [HttpGet("admin")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IResult> GetAllAdminAsync(CancellationToken ct = default)
+    {
+        var result = await productService.GetAllAdminAsync(ct);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
