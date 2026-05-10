@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.Auth.Contracts;
@@ -11,6 +12,7 @@ public class AuthController(IAuthService authService) : AuthorizedController
 {
     /// <summary>Login with phone/email and password.</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
     public async Task<IResult> LoginAsync(
         [FromBody] LoginRequest request,
@@ -22,6 +24,7 @@ public class AuthController(IAuthService authService) : AuthorizedController
 
     /// <summary>Register a new customer account.</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [HttpPost("register")]
     public async Task<IResult> RegisterAsync(
         [FromBody] RegisterRequest request,
@@ -33,6 +36,7 @@ public class AuthController(IAuthService authService) : AuthorizedController
 
     /// <summary>Get new access and refresh tokens using a valid refresh token.</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [HttpPost("refresh")]
     public async Task<IResult> RefreshTokenAsync(
         [FromBody] RefreshTokenRequest request,
