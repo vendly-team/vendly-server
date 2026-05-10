@@ -82,4 +82,55 @@ public class MinioStorageService(
 
         return Result.Success();
     }
+
+    public async Task<bool> ExistsAsync(string objectKey, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var args = new StatObjectArgs()
+                .WithBucket(_minio.BucketName)
+                .WithObject(objectKey);
+
+            await minioClient.StatObjectAsync(args, cancellationToken);
+            return true;
+        }
+        catch (Minio.Exceptions.ObjectNotFoundException)
+        {
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<Result<string>> UploadFromStreamAsync(
+        Stream stream, string objectKey, string contentType, long size,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var args = new PutObjectArgs()
+                .WithBucket(_minio.BucketName)
+                .WithObject(objectKey)
+                .WithStreamData(stream)
+                .WithObjectSize(size)
+                .WithContentType(contentType);
+
+            await minioClient.PutObjectAsync(args, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return StorageErrors.UploadFailed;
+        }
+
+        return GetPublicUrl(objectKey);
+    }
+
+    public string GetPublicUrl(string objectKey) =>
+        $"{_minio.PublicBaseUrl.TrimEnd('/')}/{_minio.BucketName}/{objectKey}";
 }

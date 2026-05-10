@@ -121,6 +121,39 @@ public class SmartupBroker(
 
     private string BuildUrl() => $"{_options.BaseUrl.TrimEnd('/')}/api/data";
 
-    public Task<Result<SmartupImageData>> DownloadImageAsync(string sha, CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    public async Task<Result<SmartupImageData>> DownloadImageAsync(
+        string sha, CancellationToken cancellationToken = default)
+    {
+        var url = $"{_options.ImageBaseUrl.TrimEnd('/')}/b/biruni/m:load_image?sha={sha}";
+
+        try
+        {
+            var client = httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _options.Token);
+
+            var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Smartup: DownloadImage sha={Sha} failed: {Status}", sha, response.StatusCode);
+                return SmartupErrors.DownloadImageFailed;
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+            var size = response.Content.Headers.ContentLength ?? -1;
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+            return new SmartupImageData(stream, contentType, size);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Smartup: DownloadImage sha={Sha} threw exception", sha);
+            return SmartupErrors.DownloadImageFailed;
+        }
+    }
 }

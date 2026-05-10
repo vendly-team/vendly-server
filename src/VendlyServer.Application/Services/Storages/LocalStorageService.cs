@@ -43,4 +43,31 @@ public class LocalStorageService(
 
         return Task.FromResult(Result.Success());
     }
+
+    public Task<bool> ExistsAsync(string objectKey, CancellationToken cancellationToken = default)
+    {
+        var fullPath = Path.Combine(
+            environment.WebRootPath, "uploads",
+            objectKey.Replace('/', Path.DirectorySeparatorChar));
+        return Task.FromResult(File.Exists(fullPath));
+    }
+
+    public async Task<Result<string>> UploadFromStreamAsync(
+        Stream stream, string objectKey, string contentType, long size,
+        CancellationToken cancellationToken = default)
+    {
+        var fullPath = Path.Combine(
+            environment.WebRootPath, "uploads",
+            objectKey.Replace('/', Path.DirectorySeparatorChar));
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+        await using var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await stream.CopyToAsync(fs, cancellationToken);
+
+        return GetPublicUrl(objectKey);
+    }
+
+    public string GetPublicUrl(string objectKey) =>
+        $"{_options.BaseUrl}/uploads/{objectKey}";
 }
