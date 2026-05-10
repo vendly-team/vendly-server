@@ -42,7 +42,7 @@ public class MinioStorageService(
 
             await minioClient.PutObjectAsync(args, cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
@@ -71,7 +71,7 @@ public class MinioStorageService(
 
             await minioClient.RemoveObjectAsync(args, cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
@@ -119,7 +119,7 @@ public class MinioStorageService(
 
             await minioClient.PutObjectAsync(args, cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }

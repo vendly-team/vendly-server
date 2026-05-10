@@ -141,12 +141,13 @@ public class SmartupBroker(
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
-            var size = response.Content.Headers.ContentLength ?? -1;
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var buffer = new MemoryStream();
+            await response.Content.CopyToAsync(buffer, cancellationToken);
+            buffer.Position = 0;
 
-            return new SmartupImageData(stream, contentType, size);
+            return new SmartupImageData(buffer, contentType, buffer.Length);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
