@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Domain.Entities.Diagnostics;
@@ -17,10 +17,9 @@ namespace VendlyServer.Application.Services.SmartupSync;
 public class SmartupSyncService(
     ISmartupBroker smartupBroker,
     AppDbContext dbContext,
-    IOptions<SmartupOptions> options,
-    ILogger<SmartupSyncService> logger) : ISmartupSyncService
+    ILogger<SmartupSyncService> logger,
+    IStorageService storageService) : ISmartupSyncService
 {
-    private readonly string _imageBaseUrl = options.Value.ImageBaseUrl;
 
     public async Task<Result> SyncAsync(CancellationToken cancellationToken = default)
     {
@@ -115,7 +114,8 @@ public class SmartupSyncService(
 
         foreach (var cat in categories)
         {
-            var imageUrl = BuildCategoryImageUrl(cat);
+            var sha = cat.Style?.L?.PhotoSha;
+            var imageUrl = string.IsNullOrEmpty(sha) ? null : await ResolveImageUrlAsync(sha, cancellationToken);
             var metadata = JsonSerializer.SerializeToDocument(new { source_id = cat.ProductTypeId });
 
             var slug = SlugHelper.ToSlug(cat.Name);
@@ -246,7 +246,12 @@ public class SmartupSyncService(
         {
             var price = decimal.TryParse(item.Price, out var p) ? p : 0m;
             var quantity = int.TryParse(item.BalanceQuant, out var q) ? q : 0;
-            var images = item.PhotoSha.Select(BuildImageUrl).ToList();
+            var images = new List<string>();
+            foreach (var sha in item.PhotoSha)
+            {
+                var url = await ResolveImageUrlAsync(sha, cancellationToken);
+                if (url is not null) images.Add(url);
+            }
             var metadata = JsonSerializer.SerializeToDocument(new
             {
                 source_id = item.ProductId,
@@ -340,13 +345,31 @@ public class SmartupSyncService(
         return id;
     }
 
-    private string BuildImageUrl(string sha) =>
-        $"{_imageBaseUrl}/b/biruni/m:load_image?sha={sha}";
-
-    private string? BuildCategoryImageUrl(SmartupCategoryItem cat)
+    private async Task<string?> ResolveImageUrlAsync(string sha, CancellationToken cancellationToken)
     {
-        var sha = cat.Style?.L?.PhotoSha;
-        return string.IsNullOrEmpty(sha) ? null : BuildImageUrl(sha);
+        var objectKey = $"smartup/{sha}";
+
+        if (await storageService.ExistsAsync(objectKey, cancellationToken))
+            return storageService.GetPublicUrl(objectKey);
+
+        var download = await smartupBroker.DownloadImageAsync(sha, cancellationToken);
+        if (download.IsFailure)
+        {
+            logger.LogWarning("Smartup: image sha={Sha} download failed — {Error}", sha, download.Error.Code);
+            return null;
+        }
+
+        await using var content = download.Data!.Content;
+        var upload = await storageService.UploadFromStreamAsync(
+            content, objectKey, download.Data.ContentType, download.Data.Size, cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            logger.LogWarning("Smartup: image sha={Sha} upload failed — {Error}", sha, upload.Error.Code);
+            return null;
+        }
+
+        return upload.Data;
     }
 
     private async Task FinishLogAsync(SyncLog log, SyncStatus status, Stopwatch sw,

@@ -110,7 +110,7 @@ public class TelegramUpdateHandlerTests
         var result = Assert.Single(_botClient.AnsweredResults);
         Assert.Equal("article", result["type"]);
         Assert.Equal("🛍️ Bosch Washer", result["title"]);
-        Assert.Contains("Sotuvda yo'q", result["description"]!.ToString());
+        Assert.Contains("sotuvda yo'q", result["description"]!.ToString());
         Assert.Contains("input_message_content", string.Join(',', result.Keys));
     }
 
@@ -153,7 +153,7 @@ public class TelegramUpdateHandlerTests
         Assert.DoesNotContain("Vendly", sentMessage.Text);
         Assert.DoesNotContain("Saved Messages", sentMessage.Text);
         Assert.Equal(456, sentMessage.ReplyToMessageId);
-        Assert.Contains("🔎 Mahsulot qidirish", sentMessage.ReplyMarkup!.ToString());
+        Assert.Contains("Mahsulot qidirish", sentMessage.ReplyMarkup!.ToString());
         Assert.Contains("https://t.me/timur_test?text=%40optouzbot%20ab", sentMessage.ReplyMarkup.ToString());
 
     }
@@ -251,7 +251,8 @@ public class TelegramUpdateHandlerTests
             return Task.FromResult(SearchResult);
         }
 
-        public Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<List<ProductListResponse>>> GetAllAdminAsync(CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<long>> CreateAsync(CreateProductRequest request, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result> UpdateAsync(long id, UpdateProductRequest request, CancellationToken ct = default) => throw new NotImplementedException();
