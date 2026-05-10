@@ -120,4 +120,7 @@ public class SmartupBroker(
     }
 
     private string BuildUrl() => $"{_options.BaseUrl.TrimEnd('/')}/api/data";
+
+    public Task<Result<SmartupImageData>> DownloadImageAsync(string sha, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
