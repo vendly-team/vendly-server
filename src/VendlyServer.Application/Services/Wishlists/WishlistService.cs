@@ -28,23 +28,27 @@ public class WishlistService(AppDbContext dbContext) : IWishlistService
         return wishlist is null ? WishlistErrors.NotFound : wishlist;
     }
 
-    public async Task<Result> AddAsync(long userId, AddWishlistRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<WishlistResponse>> AddAsync(long userId, AddWishlistRequest request, CancellationToken cancellationToken = default)
     {
-        var exists = await dbContext.Wishlists
+        var existing = await dbContext.Wishlists
             .AsNoTracking()
-            .AnyAsync(w => w.UserId == userId && w.ProductId == request.ProductId, cancellationToken);
+            .Where(w => w.UserId == userId && w.ProductId == request.ProductId)
+            .Select(w => new WishlistResponse(w.Id, w.ProductId, w.CreatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
 
-        if (exists) return WishlistErrors.AlreadyExists;
+        if (existing is not null) return existing;
 
-        dbContext.Wishlists.Add(new WishlistEntity
+        var entry = new WishlistEntity
         {
-            UserId = userId,
+            UserId    = userId,
             ProductId = request.ProductId,
             CreatedAt = DateTime.UtcNow
-        });
+        };
 
+        dbContext.Wishlists.Add(entry);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Result.Success();
+
+        return new WishlistResponse(entry.Id, entry.ProductId, entry.CreatedAt);
     }
 
     public async Task<Result> DeleteAsync(long id, long userId, CancellationToken cancellationToken = default)

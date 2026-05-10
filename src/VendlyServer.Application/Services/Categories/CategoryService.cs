@@ -1,8 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using VendlyServer.Application.Services.Categories.Contracts;
 using VendlyServer.Application.Services.Storages;
-using VendlyServer.Domain.Abstractions;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Categories;
@@ -16,8 +14,11 @@ public class CategoryService(
     {
         var categories = await dbContext.Categories
             .AsNoTracking()
-            .Where(c => !c.IsDeleted)
-            .Select(c => new CategoryResponse(c.Id, c.Name, c.ImageUrl, c.IsActive, c.CreatedAt, c.UpdatedAt))
+            .Where(c => !c.IsDeleted && c.IsActive)
+            .Select(c => new CategoryResponse(
+                c.Id, c.Name, c.Slug, c.ImageUrl, c.IsActive,
+                c.Products.Count(p => !p.IsDeleted && p.IsActive),
+                c.CreatedAt, c.UpdatedAt))
             .ToListAsync(cancellationToken);
 
         return categories;
@@ -28,7 +29,10 @@ public class CategoryService(
         var category = await dbContext.Categories
             .AsNoTracking()
             .Where(c => c.Id == id && !c.IsDeleted)
-            .Select(c => new CategoryResponse(c.Id, c.Name, c.ImageUrl, c.IsActive, c.CreatedAt, c.UpdatedAt))
+            .Select(c => new CategoryResponse(
+                c.Id, c.Name, c.Slug, c.ImageUrl, c.IsActive,
+                c.Products.Count(p => !p.IsDeleted && p.IsActive),
+                c.CreatedAt, c.UpdatedAt))
             .SingleOrDefaultAsync(cancellationToken);
 
         return category is null ? CategoryErrors.NotFound : category;

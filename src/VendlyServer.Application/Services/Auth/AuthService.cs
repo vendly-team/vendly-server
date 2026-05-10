@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Auth.Contracts;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Public;
@@ -12,7 +13,8 @@ namespace VendlyServer.Application.Services.Auth;
 public class AuthService(
     AppDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IJwtProvider jwtProvider) : IAuthService
+    IJwtProvider jwtProvider,
+    IOptions<JwtOptions> jwtOptions) : IAuthService
 {
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -72,6 +74,7 @@ public class AuthService(
 
         var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var accessToken = jwtProvider.GenerateToken(stored.User.Id, stored.User.Email ?? string.Empty, stored.User.Role.ToString());
+        var expiresIn = jwtOptions.Value.ExpirationInMinutes * 60;
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
@@ -82,7 +85,7 @@ public class AuthService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(accessToken, rawToken, ToUserInfo(stored.User));
+        return new AuthResponse(accessToken, rawToken, expiresIn, ToUserInfo(stored.User));
     }
 
     public async Task<Result> LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
@@ -113,6 +116,7 @@ public class AuthService(
     {
         var accessToken = jwtProvider.GenerateToken(user.Id, user.Email ?? string.Empty, user.Role.ToString());
         var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        var expiresIn = jwtOptions.Value.ExpirationInMinutes * 60;
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
@@ -123,7 +127,7 @@ public class AuthService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(accessToken, rawToken, ToUserInfo(user));
+        return new AuthResponse(accessToken, rawToken, expiresIn, ToUserInfo(user));
     }
 
     private static UserInfo ToUserInfo(User user) =>

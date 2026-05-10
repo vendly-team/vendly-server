@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using Minio;
 using VendlyServer.Application.Jobs.Auth;
 using VendlyServer.Application.Jobs.BtsCatalog;
+using VendlyServer.Application.Jobs.SmartupCatalog;
+using VendlyServer.Application.Services.SmartupSync;
 using VendlyServer.Application.Services.Auth;
 using VendlyServer.Application.Services.BtsRef;
 using VendlyServer.Application.Services.Products;
@@ -15,6 +17,9 @@ using VendlyServer.Application.Services.Wishlists;
 using VendlyServer.Application.Services.Currencies;
 using VendlyServer.Application.Services.Addresses;
 using VendlyServer.Application.Services.Categories;
+using VendlyServer.Application.Services.Carts;
+using VendlyServer.Application.Services.Analytics;
+using VendlyServer.Application.Services.SyncLogs;
 
 namespace VendlyServer.Application;
 
@@ -37,10 +42,15 @@ public static class Dependencies
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICartService, CartService>();
         services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<ISyncLogService, SyncLogService>();
 
         services.AddScoped<IBtsCatalogSyncJob, BtsCatalogSyncJob>();
         services.AddScoped<ICleanExpiredRefreshTokensJob, CleanExpiredRefreshTokensJob>();
+        services.AddScoped<ISmartupSyncService, SmartupSyncService>();
+        services.AddScoped<ISmartupCatalogSyncJob, SmartupCatalogSyncJob>();
 
         return services;
     }

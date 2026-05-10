@@ -1,6 +1,7 @@
 using Hangfire;
 using VendlyServer.Application.Jobs.Auth;
 using VendlyServer.Application.Jobs.BtsCatalog;
+using VendlyServer.Application.Jobs.SmartupCatalog;
 
 namespace VendlyServer.Application.Jobs;
 
@@ -18,5 +19,10 @@ public static class JobsRegistrar
             "clean-expired-refresh-tokens",
             job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(hour: 2));
+
+        RecurringJob.AddOrUpdate<ISmartupCatalogSyncJob>(
+            "smartup-catalog-sync",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(hour: 0));
     }
 }

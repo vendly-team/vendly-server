@@ -1,5 +1,6 @@
 using System.Text.Json;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Diagnostics;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Entities.Public;
 using VendlyServer.Domain.Entities.Ref;
@@ -48,11 +49,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BtsPackageTypeRef> BtsPackageTypes { get; set; }
     public DbSet<BtsPostTypeRef> BtsPostTypes { get; set; }
     public DbSet<Address> Addresses { get; set; }
-
-    // logs
-    //public DbSet<SyncLog> SyncLogs { get; set; }
-    //public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
-    //public DbSet<NotificationLog> NotificationLogs { get; set; }
+    
+    public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
+    public DbSet<NotificationLog> NotificationLogs { get; set; }
+    public DbSet<SyncLog> SyncLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,8 +107,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(x => x.TotalSnap).HasPrecision(18, 2);
         });
 
-        modelBuilder.Entity<CartItem>()
-            .Property(x => x.PriceSnapshot).HasPrecision(18, 2);
 
         modelBuilder.Entity<Payment>(entity =>
         {
@@ -145,6 +143,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Product>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
+        
+        modelBuilder.Entity<BtsWebhookEvent>()
+            .Property(x => x.RawPayload).HasColumnType("jsonb");
+
+        modelBuilder.Entity<NotificationLog>()
+            .Property(x => x.ProviderResponse).HasColumnType("jsonb");
+
+        modelBuilder.Entity<SyncLog>()
+            .Property(x => x.RequestBody).HasColumnType("jsonb");
+
+        modelBuilder.Entity<SyncLog>()
+            .Property(x => x.ErrorDetail).HasColumnType("jsonb");
+
+        modelBuilder.Entity<SyncLog>()
+            .Property(x => x.Response).HasColumnType("jsonb");
 
         modelBuilder.Entity<ProductMeasurement>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
@@ -156,11 +169,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .Property(x => x.Metadata).HasColumnType("jsonb");
 
 
-        modelBuilder.Entity<Cart>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
-
-        modelBuilder.Entity<CartItem>()
-            .Property(x => x.Metadata).HasColumnType("jsonb");
 
         modelBuilder.Entity<Order>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
@@ -179,15 +187,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<BtsBranchRef>()
             .Property(x => x.WorkingHours).HasColumnType("jsonb");
-
-        //modelBuilder.Entity<SyncLog>()
-        //    .Property(x => x.ErrorDetail).HasColumnType("jsonb");
-
-        //modelBuilder.Entity<BtsWebhookEvent>()
-        //    .Property(x => x.RawPayload).HasColumnType("jsonb");
-
-        //modelBuilder.Entity<NotificationLog>()
-        //    .Property(x => x.ProviderResponse).HasColumnType("jsonb");
 
         // Value converters for JsonDocument when using non-PostgreSQL providers (e.g. InMemory in tests)
         if (Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
