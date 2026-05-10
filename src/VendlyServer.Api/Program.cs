@@ -58,12 +58,6 @@ app.MapControllers();
 
 JobsRegistrar.RegisterRecurringJobs();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await dbContext.SeedAsync();
-}
-
- await app.ApplyMigrationsAsync();
+await app.ApplyMigrationsAsync();
 
 app.Run();

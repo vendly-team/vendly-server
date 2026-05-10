@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VendlyServer.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using VendlyServer.Infrastructure.Brokers.BtsExpress;
+using VendlyServer.Infrastructure.Brokers.Smartup;
 
 namespace VendlyServer.Infrastructure;
 
@@ -16,7 +17,8 @@ public static class Dependencies
         services
             .ConfigureDbContext(configuration)
             .ConfigureAuthentication()
-            .ConfigureBtsExpress();
+            .ConfigureBtsExpress()
+            .ConfigureSmartup();
 
         return services;
     }
@@ -62,5 +64,12 @@ public static class Dependencies
         return services;
     }
 
+    private static IServiceCollection ConfigureSmartup(this IServiceCollection services)
+    {
+        services.ConfigureOptions<SmartupOptionsSetup>();
+        services.AddHttpClient("Smartup");
+        services.AddSingleton<ISmartupBroker, SmartupBroker>();
 
+        return services;
+    }
 }

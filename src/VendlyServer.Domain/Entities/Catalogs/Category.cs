@@ -12,6 +12,9 @@ public class Category : AuditableModelBase<long>
     [MaxLength(255)]
     public required string Name { get; set; }
 
+    [MaxLength(300)]
+    public string? Slug { get; set; }
+
     [MaxLength(1000)]
     public string? ImageUrl { get; set; }
 
