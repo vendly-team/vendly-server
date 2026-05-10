@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Products.Contracts;
-using VendlyServer.Application.Services.Storage;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Infrastructure.Persistence;
@@ -17,7 +17,48 @@ public class ProductService(
 {
     private readonly ClientOptions _clientOptions = clientOptions.Value;
 
-    public async Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default)
+    public async Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default)
+    {
+        var baseQuery = dbContext.Products
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted && p.IsActive)
+            .Where(p => request.CategoryId == null || p.CategoryId == request.CategoryId);
+
+        var totalCount = await baseQuery.CountAsync(ct);
+
+        var products = await baseQuery
+            .Include(p => p.Category)
+            .Include(p => p.Variants.Where(v => !v.IsDeleted && v.IsActive))
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(ct);
+
+        var items = products.Select(p =>
+        {
+            var variants = p.Variants.ToList();
+            return new ProductCardResponse(
+                p.Id,
+                p.Name,
+                p.CategoryId,
+                p.Category.Name,
+                p.Description,
+                variants.Count > 0 ? variants.Min(v => (decimal?)v.Price) : null,
+                variants.Sum(v => v.Quantity),
+                variants.Count,
+                variants.SelectMany(v => v.Images).FirstOrDefault());
+        }).ToList();
+
+        return new PagedList<ProductCardResponse>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+    }
+
+    public async Task<Result<List<ProductListResponse>>> GetAllAdminAsync(CancellationToken ct = default)
     {
         var products = await dbContext.Products
             .AsNoTracking()

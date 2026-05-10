@@ -13,13 +13,15 @@ public class GlobalExceptionHandlerMiddleware(ILogger<GlobalExceptionHandlerMidd
     {
         logger.LogError(exception, "Unhandled exception");
 
-        var problemDetails = new ProblemDetails
+        var (status, title) = exception switch
         {
-            Title = "Internal Server Error",
-            Status = StatusCodes.Status500InternalServerError,
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+            _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
         };
 
-        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        var problemDetails = new ProblemDetails { Title = title, Status = status };
+
+        httpContext.Response.StatusCode = status;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
         return true;
     }

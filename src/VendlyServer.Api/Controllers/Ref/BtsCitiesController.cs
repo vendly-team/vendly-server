@@ -9,12 +9,17 @@ namespace VendlyServer.Api.Controllers.Ref;
 [Route("api/bts/cities")]
 public class BtsCitiesController(IBtsRefService btsRefService) : AuthorizedController
 {
-    /// <summary>Get all BTS cities.</summary>
+    /// <summary>Get BTS cities. Optionally filter by region code.</summary>
     [AllowAnonymous]
     [HttpGet]
-    public async Task<IResult> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IResult> GetAllAsync(
+        [FromQuery] string? regionCode = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await btsRefService.GetAllCitiesAsync(cancellationToken);
+        var result = string.IsNullOrWhiteSpace(regionCode)
+            ? await btsRefService.GetAllCitiesAsync(cancellationToken)
+            : await btsRefService.GetCitiesByRegionAsync(regionCode, cancellationToken);
+
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 

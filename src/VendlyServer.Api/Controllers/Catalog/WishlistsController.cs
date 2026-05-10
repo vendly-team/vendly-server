@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Common;
-using VendlyServer.Application.Services.Wishlist;
-using VendlyServer.Application.Services.Wishlist.Contracts;
-using VendlyServer.Infrastructure.Extensions;
+using VendlyServer.Application.Services.Wishlists;
+using VendlyServer.Application.Services.Wishlists.Contracts;
 
 namespace VendlyServer.Api.Controllers.Catalog;
 
@@ -30,7 +29,7 @@ public class WishlistsController(IWishlistService wishlistService) : AuthorizedC
     public async Task<IResult> AddAsync([FromBody] AddWishlistRequest request, CancellationToken cancellationToken = default)
     {
         var result = await wishlistService.AddAsync(UserId, request, cancellationToken);
-        return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
     /// <summary>Remove product from wishlist.</summary>

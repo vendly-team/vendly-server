@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Catalog;
-using VendlyServer.Application.Services.Category;
-using VendlyServer.Application.Services.Category.Contracts;
+using VendlyServer.Application.Services.Categories;
+using VendlyServer.Application.Services.Categories.Contracts;
 using VendlyServer.Domain.Abstractions;
 
 namespace VendlyServer.Tests.Controllers;

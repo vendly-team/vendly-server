@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Public;
-using VendlyServer.Application.Services.Currency;
-using VendlyServer.Application.Services.Currency.Contracts;
+using VendlyServer.Application.Services.Currencies;
+using VendlyServer.Application.Services.Currencies.Contracts;
 using VendlyServer.Domain.Abstractions;
 
 namespace VendlyServer.Tests.Controllers;
@@ -12,9 +12,9 @@ public class CurrencyControllerTests
 {
     private readonly FakeCurrencyConverterService _service = new();
 
-    private CurrencyController CreateController()
+    private CurrenciesController CreateController()
     {
-        var controller = new CurrencyController(_service);
+        var controller = new CurrenciesController(_service);
         controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         return controller;
     }
