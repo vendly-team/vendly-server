@@ -191,5 +191,13 @@ public class CategoryServiceTests : IDisposable
 
         public Task<Result> DeleteAsync(string fileUrl, CancellationToken ct = default)
             => Task.FromResult(Result.Success());
+
+        public Task<bool> ExistsAsync(string objectKey, CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task<Result<string>> UploadFromStreamAsync(Stream stream, string objectKey, string contentType, long size, CancellationToken ct = default)
+            => Task.FromResult(Result<string>.Success($"http://stub/{objectKey}"));
+
+        public string GetPublicUrl(string objectKey) => $"http://stub/{objectKey}";
     }
 }
