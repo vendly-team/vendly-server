@@ -1,6 +1,8 @@
 using System.Reflection;
+using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Api.Filters;
 using VendlyServer.Api.Middlewares;
@@ -78,6 +80,23 @@ public static class Dependencies
                     .AllowAnyMethod()
                     .AllowAnyHeader();
             });
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection ConfigureRateLimiting(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.AddFixedWindowLimiter("auth", o =>
+            {
+                o.Window = TimeSpan.FromMinutes(1);
+                o.PermitLimit = 10;
+                o.QueueLimit = 0;
+            });
+
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         });
 
         return services;

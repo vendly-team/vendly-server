@@ -16,6 +16,7 @@ builder.Services
     .ConfigureSwagger()
     .ConfigureControllers()
     .ConfigureCors()
+    .ConfigureRateLimiting()
     .ConfigureHangfire(builder.Configuration);
 
 builder.ConfigureHostConfigurations();
@@ -41,6 +42,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Enviro
 
 app.UseExceptionHandler();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
