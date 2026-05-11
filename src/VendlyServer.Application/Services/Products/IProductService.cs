@@ -7,7 +7,7 @@ public interface IProductService
 {
     Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default);
     Task<Result<List<ProductListResponse>>> GetAllAdminAsync(CancellationToken ct = default);
-    Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default);
+    Task<Result<List<ProductSearchResponse>>> SearchAsync(string? query, CancellationToken ct = default);
     Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default);
     Task<Result<long>> CreateAsync(CreateProductRequest request, CancellationToken ct = default);
     Task<Result> UpdateAsync(long id, UpdateProductRequest request, CancellationToken ct = default);
