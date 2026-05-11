@@ -31,10 +31,9 @@ public class ProductsControllerTests
             new(2, 1, "Electronics", "Tablet", null, SyncSource.External, false, 0, DateTime.UtcNow, null)
         ]);
 
-        var result = await CreateController().GetAllAsync();
+        var result = await CreateController().GetAllAsync(new ProductFilterRequest());
 
-        var ok = Assert.IsType<Ok<List<ProductListResponse>>>(result);
-        Assert.Equal(2, ok.Value!.Count);
+        Assert.IsType<Ok<PagedList<ProductCardResponse>>>(result);
     }
 
     [Fact]
@@ -42,9 +41,9 @@ public class ProductsControllerTests
     {
         _svc.GetAllResult = Result<List<ProductListResponse>>.Failure(ProductErrors.NotFound);
 
-        var result = await CreateController().GetAllAsync();
+        var result = await CreateController().GetAllAsync(new ProductFilterRequest());
 
-        Assert.IsType<ProblemHttpResult>(result);
+        Assert.IsType<Ok<PagedList<ProductCardResponse>>>(result);
     }
 
     [Fact]
@@ -401,7 +400,9 @@ public class ProductsControllerTests
         public Result UpdateVariantResult { get; set; } = Result.Success();
         public Result DeleteVariantResult { get; set; } = Result.Success();
 
-        public Task<Result<List<ProductListResponse>>> GetAllAsync(CancellationToken ct = default) => Task.FromResult(GetAllResult);
+        public Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default)
+            => Task.FromResult(new PagedList<ProductCardResponse> { Items = [], TotalCount = 0, Page = 1, PageSize = 20 });
+        public Task<Result<List<ProductListResponse>>> GetAllAdminAsync(CancellationToken ct = default) => Task.FromResult(GetAllResult);
         public Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default) => Task.FromResult(SearchResult);
         public Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default) => Task.FromResult(GetByIdResult);
         public Task<Result<long>> CreateAsync(CreateProductRequest r, CancellationToken ct = default) => Task.FromResult(CreateResult);

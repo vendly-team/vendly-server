@@ -85,7 +85,7 @@ public class CurrencyConverterServiceTests
         public Task<decimal?> GetExchangeRateAsync(string currencyCode, CancellationToken cancellationToken = default)
         {
             CallCount[currencyCode] = CallCount.GetValueOrDefault(currencyCode) + 1;
-            return Task.FromResult<decimal?>(Rates.GetValueOrDefault(currencyCode));
+            return Task.FromResult(Rates.TryGetValue(currencyCode, out var rate) ? (decimal?)rate : null);
         }
     }
 }

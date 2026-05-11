@@ -92,12 +92,12 @@ public class WishlistServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Add_ReturnsAlreadyExists_WhenDuplicate()
+    public async Task Add_ReturnsExistingItem_WhenDuplicate()
     {
         var result = await _service.AddAsync(userId: 1, new AddWishlistRequest(ProductId: 10));
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(WishlistErrors.AlreadyExists, result.Error);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(10, result.Data!.ProductId);
     }
 
     // ── DeleteAsync ───────────────────────────────────────────────────────────
