@@ -29,29 +29,34 @@ public class CategoryServiceTests : IDisposable
             new Category { Id = 2, Name = "Clothing",    IsActive = false },
             new Category { Id = 3, Name = "Deleted",     IsActive = true, IsDeleted = true }
         );
+
+        // Electronics needs at least one active product to appear in storefront GetAllAsync
+        _db.Products.Add(new Product { Id = 1, CategoryId = 1, Name = "Phone", IsActive = true });
+        _db.ProductVariants.Add(new ProductVariant { Id = 1, ProductId = 1, IsActive = true });
         _db.SaveChanges();
     }
 
     // ── GetAllAsync ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetAll_ReturnsOnlyNonDeleted()
+    public async Task GetAll_ReturnsOnlyActiveWithProducts()
     {
         var result = await _service.GetAllAsync();
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(2, result.Data!.Count);
+        Assert.Single(result.Data!);
         Assert.DoesNotContain(result.Data, c => c.Name == "Deleted");
+        Assert.DoesNotContain(result.Data, c => c.Name == "Clothing");
     }
 
     [Fact]
-    public async Task GetAll_ReturnsIsActive_Correctly()
+    public async Task GetAll_ReturnsProductCount_ForActiveCategory()
     {
         var result = await _service.GetAllAsync();
 
         Assert.True(result.IsSuccess);
-        Assert.Contains(result.Data!, c => c.Name == "Electronics" && c.IsActive);
-        Assert.Contains(result.Data!, c => c.Name == "Clothing" && !c.IsActive);
+        var electronics = Assert.Single(result.Data!, c => c.Name == "Electronics");
+        Assert.Equal(1, electronics.ProductCount);
     }
 
     // ── GetByIdAsync ──────────────────────────────────────────────────────────

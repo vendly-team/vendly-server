@@ -15,6 +15,7 @@ public class CategoryService(
         var categories = await dbContext.Categories
             .AsNoTracking()
             .Where(c => !c.IsDeleted && c.IsActive)
+            .Where(c => c.Products.Any(p => !p.IsDeleted && p.IsActive))
             .Select(c => new CategoryResponse(
                 c.Id, c.Name, c.Slug, c.ImageUrl, c.IsActive,
                 c.Products.Count(p => !p.IsDeleted && p.IsActive),
