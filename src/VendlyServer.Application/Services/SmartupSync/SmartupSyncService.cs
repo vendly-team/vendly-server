@@ -271,6 +271,17 @@ public class SmartupSyncService(
                     variant.Images = images;
                     variant.IsActive = true;
                 }
+                else
+                {
+                    dbContext.ProductVariants.Add(new ProductVariant
+                    {
+                        Product = product,
+                        Price = price,
+                        Quantity = quantity,
+                        Images = images,
+                        IsActive = true
+                    });
+                }
 
                 updated++;
             }
