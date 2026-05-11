@@ -10,6 +10,14 @@ public class MinioStorageService(
     IOptions<MinioOptions> minioOptions,
     IOptions<StorageOptions> storageOptions) : IStorageService
 {
+    private static readonly Dictionary<string, string> MimeMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"]  = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"]  = "image/png",
+        [".webp"] = "image/webp",
+    };
+
     private readonly MinioOptions _minio = minioOptions.Value;
     private readonly StorageOptions _storage = storageOptions.Value;
 
@@ -26,6 +34,8 @@ public class MinioStorageService(
         if (file.Length > _storage.MaxFileSizeBytes)
             return StorageErrors.FileTooLarge;
 
+        var contentType = MimeMap.TryGetValue(extension, out var mime) ? mime : "application/octet-stream";
+
         var fileName = $"{Guid.NewGuid()}{extension}";
         var objectKey = $"{folder.Trim('/')}/{fileName}";
 
@@ -38,7 +48,7 @@ public class MinioStorageService(
                 .WithObject(objectKey)
                 .WithStreamData(stream)
                 .WithObjectSize(file.Length)
-                .WithContentType(file.ContentType ?? "application/octet-stream");
+                .WithContentType(contentType);
 
             await minioClient.PutObjectAsync(args, cancellationToken);
         }
