@@ -65,8 +65,16 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
 
         if (validProductIds.Count == 0) return Result.Success();
 
+        // Re-order validated IDs to match the client-supplied sequence so that staggered
+        // ViewedAt timestamps reflect the client's intended "oldest first → newest last" order,
+        // not the database's natural primary-key ordering returned by ToListAsync.
+        var validSet = new HashSet<long>(validProductIds);
+        var orderedValidIds = request.ProductIds
+            .Where(id => validSet.Contains(id))
+            .ToList();
+
         var existing = await dbContext.RecentlyViewedProducts
-            .Where(r => r.UserId == userId && validProductIds.Contains(r.ProductId))
+            .Where(r => r.UserId == userId && orderedValidIds.Contains(r.ProductId))
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -74,9 +82,9 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
 
         // Order received from client preserves user's view order (oldest first → newest last).
         // Stagger ViewedAt by milliseconds so ordering is preserved server-side.
-        for (var i = 0; i < validProductIds.Count; i++)
+        for (var i = 0; i < orderedValidIds.Count; i++)
         {
-            var productId = validProductIds[i];
+            var productId = orderedValidIds[i];
             var viewedAt = now.AddMilliseconds(i);
 
             if (existingMap.TryGetValue(productId, out var entry))
