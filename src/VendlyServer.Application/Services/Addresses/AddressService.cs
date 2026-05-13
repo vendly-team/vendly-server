@@ -146,7 +146,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
         address.House = request.House;
         address.Extra = request.Extra;
         address.BtsCityCode = request.BtsCityCode;
-        address.IsDefault = request.IsDefault || address.IsDefault;
+        address.IsDefault = request.IsDefault;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
