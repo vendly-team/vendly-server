@@ -66,6 +66,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<User>()
             .HasIndex(x => x.Phone).IsUnique();
 
+        modelBuilder.Entity<User>()
+            .HasIndex(x => x.Email)
+            .IsUnique()
+            .HasFilter("email IS NOT NULL AND is_deleted = false");
+
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(x => x.Token).IsUnique();
 
