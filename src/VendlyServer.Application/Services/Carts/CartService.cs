@@ -75,7 +75,7 @@ public class CartService(AppDbContext dbContext) : ICartService
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (cart is null) return CartErrors.ItemNotFound;
 
@@ -103,7 +103,7 @@ public class CartService(AppDbContext dbContext) : ICartService
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (cart is null) return CartErrors.ItemNotFound;
 
@@ -135,7 +135,7 @@ public class CartService(AppDbContext dbContext) : ICartService
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private static CartResponse MapToResponse(Cart cart)
