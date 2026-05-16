@@ -147,12 +147,13 @@ public class SmartupSyncService(
         logger.LogInformation("Smartup Sync [{LogId}]: categories — +{Created} ~{Updated}",
             logId, created, updated);
 
-        var idMap = await dbContext.Categories
+        var allCats = await dbContext.Categories
             .Where(c => !c.IsDeleted && c.Metadata != null)
-            .ToListAsync(cancellationToken)
-            .ContinueWith(t => t.Result
-                .Where(c => TryGetSourceId(c.Metadata, out _))
-                .ToDictionary(c => GetSourceId(c.Metadata)!, c => c.Id));
+            .ToListAsync(cancellationToken);
+
+        var idMap = allCats
+            .Where(c => TryGetSourceId(c.Metadata, out _))
+            .ToDictionary(c => GetSourceId(c.Metadata)!, c => c.Id);
 
         return (idMap, created, updated);
     }
