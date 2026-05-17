@@ -14,6 +14,9 @@ public class SmartupCatalogSyncJob(
         var result = await smartupSyncService.SyncAsync(cancellationToken);
 
         if (result.IsFailure)
-            logger.LogError("Smartup Catalog Sync job failed: {Error}", result.Error.Code);
+            logger.LogError(
+                "Smartup Catalog Sync job failed: [{Code}] {Message}",
+                result.Error.Code,
+                result.Error.Message);
     }
 }
