@@ -309,6 +309,10 @@ public sealed class TelegramUpdateHandler(
 
     private static TelegramInlineKeyboardMarkup BuildOpenProductKeyboard(string redirectUrl, long? refChatId)
     {
+        var url = BuildProductRedirectUrl(redirectUrl, refChatId);
+        if (url is null)
+            return new TelegramInlineKeyboardMarkup();
+
         return new TelegramInlineKeyboardMarkup
         {
             InlineKeyboard =
@@ -317,15 +321,18 @@ public sealed class TelegramUpdateHandler(
                     new TelegramInlineKeyboardButton
                     {
                         Text = "🛍️ Mahsulotni ochish",
-                        Url = BuildProductRedirectUrl(redirectUrl, refChatId)
+                        Url = url
                     }
                 ]
             ]
         };
     }
 
-    private static string BuildProductRedirectUrl(string redirectUrl, long? refChatId)
+    private static string? BuildProductRedirectUrl(string redirectUrl, long? refChatId)
     {
+        if (!Uri.TryCreate(redirectUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")
+            return null;
+
         if (!refChatId.HasValue)
             return redirectUrl;
 
