@@ -1,4 +1,5 @@
 using Hangfire;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Jobs.SmartupCatalog;
@@ -9,6 +10,7 @@ namespace VendlyServer.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/sync-logs")]
+[Authorize(Roles = "Admin,Manager")]
 public class SyncLogsController(ISyncLogService syncLogService) : AdminController
 {
     /// <summary>
