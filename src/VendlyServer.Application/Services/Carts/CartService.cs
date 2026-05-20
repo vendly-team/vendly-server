@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Carts.Contracts;
 using VendlyServer.Domain.Abstractions;
@@ -24,6 +25,8 @@ public class CartService(AppDbContext dbContext) : ICartService
 
     public async Task<Result<CartResponse>> AddItemAsync(long userId, CartItemRequest request, CancellationToken cancellationToken = default)
     {
+        await using var tx = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
         var variant = await dbContext.ProductVariants
             .AsNoTracking()
             .Where(v => v.Id == request.ProductVariantId && !v.IsDeleted && v.IsActive)
@@ -63,6 +66,7 @@ public class CartService(AppDbContext dbContext) : ICartService
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
 
         var updated = await FindCartWithItemsAsync(userId, cancellationToken);
         return MapToResponse(updated!);
@@ -70,6 +74,8 @@ public class CartService(AppDbContext dbContext) : ICartService
 
     public async Task<Result<CartResponse>> UpdateItemAsync(long userId, long cartItemId, UpdateCartItemRequest request, CancellationToken cancellationToken = default)
     {
+        await using var tx = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
         var cart = await dbContext.Carts
             .Where(c => c.UserId == userId && !c.IsDeleted)
             .Include(c => c.Items.Where(i => !i.IsDeleted))
@@ -93,6 +99,7 @@ public class CartService(AppDbContext dbContext) : ICartService
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
         return MapToResponse(cart);
     }
 
