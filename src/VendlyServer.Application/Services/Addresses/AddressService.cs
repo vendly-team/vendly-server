@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Addresses.Contracts;
 using VendlyServer.Domain.Abstractions;
@@ -63,8 +64,9 @@ public class AddressService(AppDbContext dbContext) : IAddressService
         if (!btsCityExists)
             return AddressErrors.BtsCityCodeInvalid;
 
+        await using var tx = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
         var existingCount = await dbContext.Addresses
-            .AsNoTracking()
             .CountAsync(a => a.UserId == userId && !a.IsDeleted, cancellationToken);
 
         if (existingCount >= MaxAddressesPerUser)
@@ -97,6 +99,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
 
         dbContext.Addresses.Add(address);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
 
         return new AddressResponse(
             address.Id,
