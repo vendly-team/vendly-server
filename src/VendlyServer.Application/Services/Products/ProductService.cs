@@ -393,9 +393,11 @@ public class ProductService(
         if (variants.Count != requestedIds.Count)
             return ProductErrors.VariantNotFound;
 
+        var variantById = variants.ToDictionary(v => v.Id);
+
         foreach (var item in request.Variants)
         {
-            var variant = variants.First(v => v.Id == item.Id);
+            var variant = variantById[item.Id];
             variant.Name = item.Name;
             variant.Price = item.Price;
             variant.Quantity = item.Quantity;
