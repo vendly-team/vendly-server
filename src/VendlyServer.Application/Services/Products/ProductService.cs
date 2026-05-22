@@ -81,23 +81,24 @@ public class ProductService(
 
     public async Task<Result<List<ProductSearchResponse>>> SearchAsync(string query, CancellationToken ct = default)
     {
-        var normalizedQuery = query.Trim().ToLower();
+        var normalizedQuery = query.Trim();
 
         if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 2)
             return new List<ProductSearchResponse>();
 
         var clientBaseUrl = (_clientOptions.BaseUrl ?? string.Empty).TrimEnd('/');
+        var likePattern = $"%{normalizedQuery}%";
 
         var products = await dbContext.Products
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
             .Where(p =>
-                p.Name.ToLower().Contains(normalizedQuery) ||
-                (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
-                p.Category.Name.ToLower().Contains(normalizedQuery) ||
+                EF.Functions.ILike(p.Name, likePattern) ||
+                (p.Description != null && EF.Functions.ILike(p.Description, likePattern)) ||
+                EF.Functions.ILike(p.Category.Name, likePattern) ||
                 p.Variants.Any(v =>
                     !v.IsDeleted &&
-                    ((v.Name != null && v.Name.ToLower().Contains(normalizedQuery)))))
+                    (v.Name != null && EF.Functions.ILike(v.Name, likePattern))))
             .Select(p => new ProductSearchResponse(
                 p.Id,
                 p.Name,
@@ -393,9 +394,10 @@ public class ProductService(
         if (variants.Count != requestedIds.Count)
             return ProductErrors.VariantNotFound;
 
+        var variantById = variants.ToDictionary(v => v.Id);
         foreach (var item in request.Variants)
         {
-            var variant = variants.First(v => v.Id == item.Id);
+            if (!variantById.TryGetValue(item.Id, out var variant)) continue;
             variant.Name = item.Name;
             variant.Price = item.Price;
             variant.Quantity = item.Quantity;
