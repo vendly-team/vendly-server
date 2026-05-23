@@ -3,7 +3,14 @@ namespace VendlyServer.Domain.Abstractions;
 public record DataQueryRequest
 {
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+
+    private int _pageSize = 20;
+    public int PageSize
+    {
+        get => _pageSize;
+        set => _pageSize = Math.Clamp(value, 1, 100);
+    }
+
     public string? SortBy { get; set; }
     public SortDirection SortDirection { get; set; } = SortDirection.Asc;
 }
