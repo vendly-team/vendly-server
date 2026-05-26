@@ -395,7 +395,7 @@ public class ProductService(
 
         foreach (var item in request.Variants)
         {
-            var variant = variants.First(v => v.Id == item.Id);
+            var variant = variants.SingleOrDefault(v => v.Id == item.Id)!;
             variant.Name = item.Name;
             variant.Price = item.Price;
             variant.Quantity = item.Quantity;
