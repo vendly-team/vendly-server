@@ -244,8 +244,20 @@ public class SmartupSyncService(
 
         foreach (var item in items)
         {
-            var price = decimal.TryParse(item.Price, out var p) ? p : 0m;
-            var quantity = int.TryParse(item.BalanceQuant, out var q) ? q : 0;
+            if (!decimal.TryParse(item.Price, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var price))
+            {
+                logger.LogWarning("Smartup Sync: unparseable price '{Price}' for product {ProductId} — defaulting to 0",
+                    item.Price, item.ProductId);
+                price = 0m;
+            }
+
+            if (!int.TryParse(item.BalanceQuant, out var quantity))
+            {
+                logger.LogWarning("Smartup Sync: unparseable quantity '{Quant}' for product {ProductId} — defaulting to 0",
+                    item.BalanceQuant, item.ProductId);
+                quantity = 0;
+            }
             var images = new List<string>();
             foreach (var sha in item.PhotoSha)
             {
