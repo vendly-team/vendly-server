@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
@@ -8,7 +9,8 @@ namespace VendlyServer.Application.Services.Storages;
 public class MinioStorageService(
     IMinioClient minioClient,
     IOptions<MinioOptions> minioOptions,
-    IOptions<StorageOptions> storageOptions) : IStorageService
+    IOptions<StorageOptions> storageOptions,
+    ILogger<MinioStorageService> logger) : IStorageService
 {
     private readonly MinioOptions _minio = minioOptions.Value;
     private readonly StorageOptions _storage = storageOptions.Value;
@@ -98,8 +100,13 @@ public class MinioStorageService(
         {
             return false;
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "MinIO StatObject for {ObjectKey} threw an unexpected exception; treating as non-existent", objectKey);
             return false;
         }
     }
