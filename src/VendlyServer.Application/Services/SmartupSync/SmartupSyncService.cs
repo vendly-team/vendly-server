@@ -182,6 +182,8 @@ public class SmartupSyncService(
             var catCreated = 0;
             var catUpdated = 0;
             var catErrors = 0;
+            var allReturnedIds = new HashSet<string>();
+            var allPagesFetched = true;
 
             do
             {
@@ -194,11 +196,15 @@ public class SmartupSyncService(
                         logId, cat.ProductTypeId, page, call.Result.Error.Code);
                     catErrors++;
                     totalErrors++;
+                    allPagesFetched = false;
                     break;
                 }
 
                 var envelope = call.Result.Data!;
                 pageCount = envelope.GetPageCount();
+
+                foreach (var item in envelope.Products)
+                    allReturnedIds.Add(item.ProductId);
 
                 var (c, u) = await UpsertProductsAsync(envelope.Products, categoryId, cancellationToken);
                 catCreated += c;
@@ -209,6 +215,9 @@ public class SmartupSyncService(
                 page++;
             }
             while (page <= pageCount);
+
+            if (allPagesFetched)
+                await DeactivateMissingProductsAsync(categoryId, allReturnedIds, cancellationToken);
 
             logger.LogInformation(
                 "Smartup Sync [{LogId}]: [{CategoryName}] — +{Created} ~{Updated} !{Errors}",
@@ -306,6 +315,32 @@ public class SmartupSyncService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return (created, updated);
+    }
+
+    private async Task DeactivateMissingProductsAsync(
+        long categoryId, HashSet<string> returnedIds, CancellationToken cancellationToken)
+    {
+        var dbProducts = await dbContext.Products
+            .Where(p => !p.IsDeleted && p.CategoryId == categoryId && p.SyncSource == SyncSource.External && p.IsActive)
+            .Include(p => p.Variants)
+            .ToListAsync(cancellationToken);
+
+        var anyDeactivated = false;
+        foreach (var product in dbProducts)
+        {
+            if (!TryGetSourceId(product.Metadata, out var sourceId) || sourceId is null)
+                continue;
+            if (returnedIds.Contains(sourceId))
+                continue;
+
+            product.IsActive = false;
+            foreach (var variant in product.Variants.Where(v => !v.IsDeleted))
+                variant.IsActive = false;
+            anyDeactivated = true;
+        }
+
+        if (anyDeactivated)
+            await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
