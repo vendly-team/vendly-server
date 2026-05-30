@@ -182,6 +182,7 @@ public class SmartupSyncService(
             var catCreated = 0;
             var catUpdated = 0;
             var catErrors = 0;
+            var returnedProductIds = new HashSet<string>();
 
             do
             {
@@ -200,6 +201,9 @@ public class SmartupSyncService(
                 var envelope = call.Result.Data!;
                 pageCount = envelope.GetPageCount();
 
+                foreach (var item in envelope.Products)
+                    returnedProductIds.Add(item.ProductId);
+
                 var (c, u) = await UpsertProductsAsync(envelope.Products, categoryId, cancellationToken);
                 catCreated += c;
                 catUpdated += u;
@@ -209,6 +213,9 @@ public class SmartupSyncService(
                 page++;
             }
             while (page <= pageCount);
+
+            if (catErrors == 0)
+                await DeactivateMissingProductsAsync(categoryId, returnedProductIds, cancellationToken);
 
             logger.LogInformation(
                 "Smartup Sync [{LogId}]: [{CategoryName}] — +{Created} ~{Updated} !{Errors}",
@@ -306,6 +313,31 @@ public class SmartupSyncService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return (created, updated);
+    }
+
+    private async Task DeactivateMissingProductsAsync(
+        long categoryId, HashSet<string> returnedIds, CancellationToken cancellationToken)
+    {
+        var dbProducts = await dbContext.Products
+            .Where(p => !p.IsDeleted && p.CategoryId == categoryId &&
+                        p.SyncSource == SyncSource.External && p.IsActive)
+            .Include(p => p.Variants)
+            .ToListAsync(cancellationToken);
+
+        var changed = false;
+        foreach (var product in dbProducts)
+        {
+            if (!TryGetSourceId(product.Metadata, out var sourceId) || returnedIds.Contains(sourceId!))
+                continue;
+
+            product.IsActive = false;
+            foreach (var variant in product.Variants.Where(v => !v.IsDeleted))
+                variant.IsActive = false;
+            changed = true;
+        }
+
+        if (changed)
+            await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
