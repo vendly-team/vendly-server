@@ -6,6 +6,6 @@ public class UpdateCartItemRequestValidator : AbstractValidator<UpdateCartItemRe
 {
     public UpdateCartItemRequestValidator()
     {
-        RuleFor(x => x.Qty).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Qty).GreaterThan(0);
     }
 }
