@@ -1,5 +1,6 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using VendlyServer.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using VendlyServer.Infrastructure.Authentication;
@@ -67,6 +68,8 @@ public static class Dependencies
     private static IServiceCollection ConfigureSmartup(this IServiceCollection services)
     {
         services.ConfigureOptions<SmartupOptionsSetup>();
+        services.AddSingleton<IValidateOptions<SmartupOptions>, SmartupOptionsValidator>();
+        services.AddOptions<SmartupOptions>().ValidateOnStart();
         services.AddHttpClient("Smartup");
         services.AddSingleton<ISmartupBroker, SmartupBroker>();
 
