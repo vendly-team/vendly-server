@@ -276,6 +276,20 @@ public class SmartupSyncService(
                     variant.Images = images;
                     variant.IsActive = true;
                 }
+                else
+                {
+                    logger.LogWarning(
+                        "Smartup Sync: product {ProductId} had no active variant; recreating",
+                        item.ProductId);
+                    dbContext.ProductVariants.Add(new ProductVariant
+                    {
+                        Product = product,
+                        Price = price,
+                        Quantity = quantity,
+                        Images = images,
+                        IsActive = true
+                    });
+                }
 
                 updated++;
             }
