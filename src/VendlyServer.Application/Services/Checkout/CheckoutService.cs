@@ -40,6 +40,9 @@ public class CheckoutService(
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
+            .Include(c => c.Items.Where(i => !i.IsDeleted))
+                .ThenInclude(i => i.ProductVariant)
+                    .ThenInclude(v => v.Measurements)
             .SingleOrDefaultAsync(cancellationToken);
 
         var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
@@ -82,7 +85,7 @@ public class CheckoutService(
                 ProductNameSnap = variant.Product.Name,
                 SkuSnap = string.IsNullOrWhiteSpace(variant.Name) ? $"VAR-{variant.Id}" : variant.Name,
                 ImageSnap = variant.Images.FirstOrDefault() ?? string.Empty,
-                WeightKgSnap = 0,
+                WeightKgSnap = variant.Measurements?.WeightKg ?? 0,
                 Qty = item.Qty,
                 PriceSnap = variant.Price,
                 TotalSnap = variant.Price * item.Qty
