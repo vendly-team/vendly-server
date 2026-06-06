@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,8 @@ public sealed class HamkorController(
     IOptions<HamkorOptions> options,
     ILogger<HamkorController> logger) : ControllerBase
 {
+    private const string LogScope = "Hamkor";
+
     private readonly HamkorOptions _options = options.Value;
 
     /// <summary>Payment callback (webhook) from Hamkorbank after a hosted-page payment.</summary>
@@ -23,14 +26,31 @@ public sealed class HamkorController(
         [FromBody] HamkorCallbackRequest callback,
         CancellationToken cancellationToken = default)
     {
+        var bodyJson = JsonSerializer.Serialize(callback);
+
+        logger.LogInformation(
+            "{Scope} ← webhook received ext_id={ExtId} state={State} Body: {Body}",
+            LogScope, callback.ExtId, callback.State, bodyJson);
+
         if (!HamkorSignatureValidator.IsValid(_options.Key, _options.Secret, callback.ExtId, callback.Signature))
         {
-            logger.LogWarning("Hamkor webhook: invalid signature for ext_id {ExtId}", callback.ExtId);
+            logger.LogWarning(
+                "{Scope} ← webhook signature INVALID for ext_id={ExtId} signature={Signature}",
+                LogScope, callback.ExtId, callback.Signature);
             return TypedResults.Unauthorized();
         }
 
+        logger.LogInformation(
+            "{Scope} ← webhook signature OK for ext_id={ExtId}",
+            LogScope, callback.ExtId);
+
         // Acknowledge regardless of internal outcome to avoid endless bank retries.
-        await checkoutService.HandleCallbackAsync(callback, cancellationToken);
+        var result = await checkoutService.HandleCallbackAsync(callback, cancellationToken);
+
+        logger.LogInformation(
+            "{Scope} ← webhook handled for ext_id={ExtId} success={IsSuccess}",
+            LogScope, callback.ExtId, result.IsSuccess);
+
         return TypedResults.Ok();
     }
 }

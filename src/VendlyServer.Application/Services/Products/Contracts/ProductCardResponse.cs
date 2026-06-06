@@ -9,5 +9,6 @@ public record ProductCardResponse(
     decimal? MinPrice,
     int TotalQuantity,
     int VariantCount,
-    string? FirstImage
+    string? FirstImage,
+    long? FirstVariantId
 );

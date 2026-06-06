@@ -46,7 +46,8 @@ public class ProductService(
                 variants.Count > 0 ? variants.Min(v => (decimal?)v.Price) : null,
                 variants.Sum(v => v.Quantity),
                 variants.Count,
-                variants.SelectMany(v => v.Images).FirstOrDefault());
+                variants.SelectMany(v => v.Images).FirstOrDefault(),
+                variants.Count > 0 ? variants.OrderBy(v => v.Id).Select(v => (long?)v.Id).FirstOrDefault() : null);
         }).ToList();
 
         return new PagedList<ProductCardResponse>
