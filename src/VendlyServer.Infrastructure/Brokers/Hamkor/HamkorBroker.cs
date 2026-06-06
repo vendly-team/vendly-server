@@ -63,6 +63,16 @@ public class HamkorBroker(
         HamkorCreatePaymentUrlRequest request,
         CancellationToken cancellationToken = default)
     {
+        var fiscalItems = request.Items
+            .Select(item => new HamkorFiscalItem
+            {
+                Amount = item.AmountMinorUnits,
+                Count = item.Qty,
+                PackageCode = options.PackageCode,
+                Spic = options.Spic,
+            })
+            .ToArray();
+
         var rpcResult = await SendRpcAsync<HamkorCreateUrlParams, HamkorCreateUrlResult>(
             HamkorMethods.CreatePaymentUrl,
             new HamkorCreateUrlParams
@@ -72,7 +82,18 @@ public class HamkorBroker(
                 SuccessUrl = request.SuccessUrl,
                 FailureUrl = request.FailureUrl,
                 CallbackUrl = request.CallbackUrl,
-                Hold = 1
+                Hold = 1,
+                FiscalData = new HamkorFiscalData
+                {
+                    Item = fiscalItems,
+                    Location = new HamkorLocation
+                    {
+                        Lat = options.LocationLat,
+                        Long = options.LocationLong,
+                    },
+                    Tin = options.Tin,
+                    VatPercent = options.VatPercent,
+                },
             },
             cancellationToken);
 
