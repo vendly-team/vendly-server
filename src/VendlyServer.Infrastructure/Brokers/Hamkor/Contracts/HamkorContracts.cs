@@ -52,6 +52,10 @@ public sealed record HamkorRpcError
 
 // ── pay.create.url ────────────────────────────────────────────────────────────
 
+// One fiscal line for the invoice (cart item or delivery fee).
+// AmountMinorUnits is the total for the line (price * qty) in tiyin.
+public sealed record HamkorCreatePaymentItem(long AmountMinorUnits, int Qty);
+
 // Input contract for the broker. Add new fields here when the payment request grows.
 public sealed record HamkorCreatePaymentUrlRequest
 {
@@ -65,6 +69,9 @@ public sealed record HamkorCreatePaymentUrlRequest
     public required string FailureUrl { get; init; }
 
     public required string CallbackUrl { get; init; }
+
+    // Fiscal lines — sum of (AmountMinorUnits * Qty) must equal AmountMinorUnits above.
+    public required IReadOnlyList<HamkorCreatePaymentItem> Items { get; init; }
 }
 
 public sealed record HamkorCreateUrlParams
@@ -88,6 +95,54 @@ public sealed record HamkorCreateUrlParams
     // 1 = false (charge immediately), 2 = true (hold then capture).
     [JsonPropertyName("hold")]
     public int Hold { get; init; } = 1;
+
+    // Fiscal data — required by the bank's hosted payment page to register a Soliq receipt.
+    // Without this the page shows "wrong invoice" (error_code 1014).
+    [JsonPropertyName("fiscal_data")]
+    public HamkorFiscalData? FiscalData { get; init; }
+}
+
+public sealed record HamkorFiscalData
+{
+    [JsonPropertyName("item")]
+    public required HamkorFiscalItem[] Item { get; init; }
+
+    [JsonPropertyName("location")]
+    public required HamkorLocation Location { get; init; }
+
+    [JsonPropertyName("tin")]
+    public required string Tin { get; init; }
+
+    [JsonPropertyName("vat_percent")]
+    public required int VatPercent { get; init; }
+}
+
+public sealed record HamkorFiscalItem
+{
+    // Line amount in tiyin (price * qty).
+    [JsonPropertyName("amount")]
+    public required long Amount { get; init; }
+
+    [JsonPropertyName("count")]
+    public required int Count { get; init; }
+
+    [JsonPropertyName("package_code")]
+    public required string PackageCode { get; init; }
+
+    [JsonPropertyName("spic")]
+    public required string Spic { get; init; }
+
+    [JsonPropertyName("labels")]
+    public string[] Labels { get; init; } = [""];
+}
+
+public sealed record HamkorLocation
+{
+    [JsonPropertyName("lat")]
+    public required double Lat { get; init; }
+
+    [JsonPropertyName("long")]
+    public required double Long { get; init; }
 }
 
 public sealed record HamkorCreateUrlResult

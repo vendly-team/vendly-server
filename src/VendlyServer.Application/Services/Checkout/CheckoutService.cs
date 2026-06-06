@@ -105,6 +105,16 @@ public class CheckoutService(
         // Hamkor expects the amount in tiyin (smallest currency unit) = so'm * 100.
         var amountMinorUnits = (long)Math.Round(totalAmount * 100m, MidpointRounding.AwayFromZero);
 
+        // Build fiscal lines for each cart item plus delivery; line amount is total (price * qty).
+        var fiscalItems = items
+            .Select(i => new HamkorCreatePaymentItem(
+                AmountMinorUnits: (long)Math.Round(i.ProductVariant.Price * i.Qty * 100m, MidpointRounding.AwayFromZero),
+                Qty: i.Qty))
+            .Append(new HamkorCreatePaymentItem(
+                AmountMinorUnits: (long)Math.Round(DeliveryCost * 100m, MidpointRounding.AwayFromZero),
+                Qty: 1))
+            .ToList();
+
         var urlResult = await hamkorBroker.CreatePaymentUrlAsync(
             new HamkorCreatePaymentUrlRequest
             {
@@ -112,7 +122,8 @@ public class CheckoutService(
                 AmountMinorUnits = amountMinorUnits,
                 SuccessUrl = successUrl,
                 FailureUrl = failureUrl,
-                CallbackUrl = callbackUrl
+                CallbackUrl = callbackUrl,
+                Items = fiscalItems,
             },
             cancellationToken);
 
