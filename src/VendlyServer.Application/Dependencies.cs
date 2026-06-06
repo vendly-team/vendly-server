@@ -18,6 +18,9 @@ using VendlyServer.Application.Services.Currencies;
 using VendlyServer.Application.Services.Addresses;
 using VendlyServer.Application.Services.Categories;
 using VendlyServer.Application.Services.Carts;
+using VendlyServer.Application.Services.Checkout;
+using VendlyServer.Application.Services.Orders;
+using VendlyServer.Application.Services.Shipping;
 using VendlyServer.Application.Services.Analytics;
 using VendlyServer.Application.Services.SyncLogs;
 
@@ -43,6 +46,9 @@ public static class Dependencies
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICartService, CartService>();
+        services.AddScoped<ICheckoutService, CheckoutService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IOrderShippingService, OrderShippingService>();
         services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         services.AddScoped<ISyncLogService, SyncLogService>();

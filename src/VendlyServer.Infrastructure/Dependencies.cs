@@ -6,6 +6,7 @@ using VendlyServer.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
+using VendlyServer.Infrastructure.Brokers.Hamkor;
 
 namespace VendlyServer.Infrastructure;
 
@@ -18,7 +19,8 @@ public static class Dependencies
             .ConfigureDbContext(configuration)
             .ConfigureAuthentication()
             .ConfigureBtsExpress()
-            .ConfigureSmartup();
+            .ConfigureSmartup()
+            .ConfigureHamkor();
 
         return services;
     }
@@ -69,6 +71,15 @@ public static class Dependencies
         services.ConfigureOptions<SmartupOptionsSetup>();
         services.AddHttpClient("Smartup");
         services.AddSingleton<ISmartupBroker, SmartupBroker>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureHamkor(this IServiceCollection services)
+    {
+        services.ConfigureOptions<HamkorOptionsSetup>();
+        services.AddHttpClient("Hamkor");
+        services.AddSingleton<IHamkorBroker, HamkorBroker>();
 
         return services;
     }
