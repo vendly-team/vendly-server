@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VendlyServer.Domain.Abstractions;
@@ -28,33 +28,30 @@ public class HamkorBroker(
             return accessToken;
 
         var client = CreateHttpClient();
-
         var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{options.Key}:{options.Secret}"));
+        var requestBodyJson = JsonSerializer.Serialize(new { grant_type = "client_credentials" });
+
+        logger.LogInformation("Hamkor → POST {Url}/token Body: {Body}", options.BaseUrl, requestBodyJson);
+
         var request = new HttpRequestMessage(HttpMethod.Post, "/token")
         {
             Headers = { Authorization = new AuthenticationHeaderValue("Basic", basic) },
-            Content = JsonContent.Create(new { grant_type = "client_credentials" })
+            Content = new StringContent(requestBodyJson, Encoding.UTF8, "application/json"),
         };
 
         var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            logger.LogError("Hamkor: token request failed with status {Status}", response.StatusCode);
-            return null;
-        }
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        var result = await response.Content.ReadFromJsonAsync<HamkorTokenResponse>(cancellationToken);
-        if (string.IsNullOrWhiteSpace(result?.AccessToken))
-        {
-            logger.LogError("Hamkor: token response had no access_token");
-            return null;
-        }
+        logger.LogInformation("Hamkor ← /token {StatusCode} Body: {Body}", (int)response.StatusCode, responseBody);
+
+        if (!response.IsSuccessStatusCode) return null;
+
+        var result = JsonSerializer.Deserialize<HamkorTokenResponse>(responseBody);
+        if (string.IsNullOrWhiteSpace(result?.AccessToken)) return null;
 
         accessToken = result.AccessToken;
         // Refresh a minute early to avoid edge-of-expiry failures.
         accessTokenExpiry = DateTime.UtcNow.AddSeconds(Math.Max(60, result.ExpiresIn) - 60);
-
-        logger.LogInformation("Hamkor: access token obtained");
         return accessToken;
     }
 
@@ -132,22 +129,30 @@ public class HamkorBroker(
             Id = Guid.NewGuid().ToString()
         };
 
-        var response = await client.PostAsJsonAsync(AcquiringPath, rpcRequest, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            logger.LogError("Hamkor: {Method} failed with status {Status}", method, response.StatusCode);
-            return Error.Failure($"Hamkor.{method}.HttpError");
-        }
+        var requestBodyJson = JsonSerializer.Serialize(rpcRequest);
 
-        var rpcResponse = await response.Content
-            .ReadFromJsonAsync<HamkorRpcResponse<TResult>>(cancellationToken);
+        logger.LogInformation(
+            "Hamkor → {Method} requestId={RequestId} Body: {Body}",
+            method, rpcRequest.Id, requestBodyJson);
+
+        var response = await client.PostAsync(
+            AcquiringPath,
+            new StringContent(requestBodyJson, Encoding.UTF8, "application/json"),
+            cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Hamkor ← {Method} {StatusCode} requestId={RequestId} Body: {Body}",
+            method, (int)response.StatusCode, rpcRequest.Id, responseBody);
+
+        if (!response.IsSuccessStatusCode)
+            return Error.Failure($"Hamkor.{method}.HttpError");
+
+        var rpcResponse = JsonSerializer.Deserialize<HamkorRpcResponse<TResult>>(responseBody);
 
         if (rpcResponse?.Error is not null)
-        {
-            logger.LogError("Hamkor: {Method} returned error {Code}: {Message}",
-                method, rpcResponse.Error.Code, rpcResponse.Error.Message);
             return Error.Failure($"Hamkor.{method}.Error");
-        }
 
         if (rpcResponse is null || rpcResponse.Result is null)
             return Error.Failure($"Hamkor.{method}.EmptyResult");
