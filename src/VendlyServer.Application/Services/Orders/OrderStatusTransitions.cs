@@ -21,6 +21,7 @@ public static class OrderStatusTransitions
 
     private static readonly HashSet<OrderStatus> Cancellable =
     [
+        OrderStatus.Draft,
         OrderStatus.New,
         OrderStatus.Accepted,
         OrderStatus.Preparing,

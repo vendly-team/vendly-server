@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Carts.Contracts;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
+using VendlyServer.Domain.Enums;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Carts;
@@ -19,7 +20,8 @@ public class CartService(AppDbContext dbContext) : ICartService
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return MapToResponse(cart);
+        var locked = await HasActiveOrderAsync(cart.Id, cancellationToken);
+        return MapToResponse(cart, locked);
     }
 
     public async Task<Result<CartResponse>> AddItemAsync(long userId, CartItemRequest request, CancellationToken cancellationToken = default)
@@ -32,6 +34,9 @@ public class CartService(AppDbContext dbContext) : ICartService
         if (variant is null) return CartErrors.VariantNotFound;
 
         var cart = await FindCartWithItemsAsync(userId, cancellationToken);
+
+        if (cart is not null && await HasActiveOrderAsync(cart.Id, cancellationToken))
+            return CartErrors.CheckoutInProgress;
 
         if (cart is null)
         {
@@ -79,6 +84,9 @@ public class CartService(AppDbContext dbContext) : ICartService
 
         if (cart is null) return CartErrors.ItemNotFound;
 
+        if (await HasActiveOrderAsync(cart.Id, cancellationToken))
+            return CartErrors.CheckoutInProgress;
+
         var item = cart.Items.SingleOrDefault(i => i.Id == cartItemId);
         if (item is null) return CartErrors.ItemNotFound;
 
@@ -107,6 +115,9 @@ public class CartService(AppDbContext dbContext) : ICartService
 
         if (cart is null) return CartErrors.ItemNotFound;
 
+        if (await HasActiveOrderAsync(cart.Id, cancellationToken))
+            return CartErrors.CheckoutInProgress;
+
         var item = cart.Items.SingleOrDefault(i => i.Id == cartItemId);
         if (item is null) return CartErrors.ItemNotFound;
 
@@ -128,6 +139,13 @@ public class CartService(AppDbContext dbContext) : ICartService
         return Result.Success();
     }
 
+    private Task<bool> HasActiveOrderAsync(long cartId, CancellationToken cancellationToken) =>
+        dbContext.Orders.AnyAsync(
+            o => o.CartId == cartId &&
+                 o.Status == OrderStatus.New &&
+                 !o.IsDeleted,
+            cancellationToken);
+
     private async Task<Cart?> FindCartWithItemsAsync(long userId, CancellationToken cancellationToken)
     {
         return await dbContext.Carts
@@ -138,7 +156,7 @@ public class CartService(AppDbContext dbContext) : ICartService
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    private static CartResponse MapToResponse(Cart cart)
+    private static CartResponse MapToResponse(Cart cart, bool isLocked = false)
     {
         var items = cart.Items
             .Where(i => !i.IsDeleted)
@@ -155,6 +173,6 @@ public class CartService(AppDbContext dbContext) : ICartService
             .ToList();
 
         var total = items.Sum(i => i.Price * i.Qty);
-        return new CartResponse(cart.Id, items, total);
+        return new CartResponse(cart.Id, items, total, IsLocked: isLocked);
     }
 }

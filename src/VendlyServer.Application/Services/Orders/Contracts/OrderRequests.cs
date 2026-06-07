@@ -6,6 +6,10 @@ public record OrderFilterRequest
     public string? Search { get; init; }
 }
 
+public record CreateOrderRequest(long AddressId);
+
+public record SetOrderAddressRequest(long AddressId);
+
 public record UpdateOrderStatusRequest(string Status, string? Note);
 
 public record AddOrderNoteRequest(string Note);
