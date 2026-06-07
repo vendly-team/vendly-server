@@ -5,6 +5,7 @@ using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Products;
@@ -37,16 +38,18 @@ public class ProductService(
         var items = products.Select(p =>
         {
             var variants = p.Variants.ToList();
+            var defaultVariant = variants.Count > 0 ? variants.MinBy(v => v.Price) : null;
             return new ProductCardResponse(
                 p.Id,
                 p.Name,
                 p.CategoryId,
                 p.Category.Name,
                 p.Description,
-                variants.Count > 0 ? variants.Min(v => (decimal?)v.Price) : null,
+                defaultVariant?.Price,
                 variants.Sum(v => v.Quantity),
                 variants.Count,
-                variants.SelectMany(v => v.Images).FirstOrDefault());
+                variants.SelectMany(v => v.Images).FirstOrDefault(),
+                defaultVariant?.Id);
         }).ToList();
 
         return new PagedList<ProductCardResponse>
@@ -92,9 +95,11 @@ public class ProductService(
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
             .Where(p =>
-                p.Name.ToLower().Contains(normalizedQuery) ||
+                (p.Name.Uz != null && p.Name.Uz.ToLower().Contains(normalizedQuery)) ||
+                (p.Name.Ru != null && p.Name.Ru.ToLower().Contains(normalizedQuery)) ||
                 (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
-                p.Category.Name.ToLower().Contains(normalizedQuery) ||
+                (p.Category.Name.Uz != null && p.Category.Name.Uz.ToLower().Contains(normalizedQuery)) ||
+                (p.Category.Name.Ru != null && p.Category.Name.Ru.ToLower().Contains(normalizedQuery)) ||
                 p.Variants.Any(v =>
                     !v.IsDeleted &&
                     ((v.Name != null && v.Name.ToLower().Contains(normalizedQuery)))))
@@ -482,9 +487,9 @@ public class ProductService(
         return result;
     }
 
-    private static string BuildRedirectUrl(string name, long id, string baseUrl)
+    private static string BuildRedirectUrl(MultiLanguageField name, long id, string baseUrl)
     {
-        var slug = CreateProductSlug(name, id);
+        var slug = CreateProductSlug(name.Uz ?? name.Ru ?? string.Empty, id);
 
         return string.IsNullOrWhiteSpace(baseUrl)
             ? $"/product/{slug}"

@@ -14,6 +14,7 @@ builder.Services
     .ConfigureApplication()
     .ConfigureInfrastructure(builder.Configuration)
     .ConfigureSwagger()
+    .ConfigureExceptionHandler()
     .ConfigureControllers()
     .ConfigureCors()
     .ConfigureHangfire(builder.Configuration);

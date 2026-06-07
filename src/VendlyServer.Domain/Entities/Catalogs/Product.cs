@@ -1,7 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Entities.Common;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Catalogs;
@@ -11,8 +11,7 @@ public class Product : AuditableModelBase<long>
 {
     public long CategoryId { get; set; }
 
-    [MaxLength(255)]
-    public required string Name { get; set; }
+    public MultiLanguageField Name { get; set; } = new();
 
     [MaxLength(2000)]
     public string? Description { get; set; }
