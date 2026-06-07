@@ -4,13 +4,14 @@ namespace VendlyServer.Application.Services.Products.Contracts;
 
 public record ProductCardResponse(
     long Id,
-    MultiLanguageField Name,
+    string Name,
     long CategoryId,
-    MultiLanguageField CategoryName,
+    string CategoryName,
     string? Description,
     decimal? MinPrice,
     int TotalQuantity,
     int VariantCount,
     string? FirstImage,
-    long? DefaultVariantId
+    long? DefaultVariantId,
+    long? FirstVariantId
 );

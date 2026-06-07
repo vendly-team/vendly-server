@@ -39,17 +39,17 @@ public class ProductService(
         {
             var variants = p.Variants.ToList();
             var defaultVariant = variants.Count > 0 ? variants.MinBy(v => v.Price) : null;
+            
             return new ProductCardResponse(
                 p.Id,
                 p.Name,
                 p.CategoryId,
                 p.Category.Name,
                 p.Description,
-                defaultVariant?.Price,
+                (decimal?)defaultVariant?.Price,
                 variants.Sum(v => v.Quantity),
                 variants.Count,
-                variants.SelectMany(v => v.Images).FirstOrDefault(),
-                defaultVariant?.Id);
+                variants.SelectMany(v => v.Images).FirstOrDefault()
         }).ToList();
 
         return new PagedList<ProductCardResponse>
@@ -95,11 +95,9 @@ public class ProductService(
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
             .Where(p =>
-                (p.Name.Uz != null && p.Name.Uz.ToLower().Contains(normalizedQuery)) ||
-                (p.Name.Ru != null && p.Name.Ru.ToLower().Contains(normalizedQuery)) ||
+                p.Name.ToLower().Contains(normalizedQuery) ||
                 (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
-                (p.Category.Name.Uz != null && p.Category.Name.Uz.ToLower().Contains(normalizedQuery)) ||
-                (p.Category.Name.Ru != null && p.Category.Name.Ru.ToLower().Contains(normalizedQuery)) ||
+                p.Category.Name.ToLower().Contains(normalizedQuery) ||
                 p.Variants.Any(v =>
                     !v.IsDeleted &&
                     ((v.Name != null && v.Name.ToLower().Contains(normalizedQuery)))))
@@ -487,9 +485,9 @@ public class ProductService(
         return result;
     }
 
-    private static string BuildRedirectUrl(MultiLanguageField name, long id, string baseUrl)
+    private static string BuildRedirectUrl(string name, long id, string baseUrl)
     {
-        var slug = CreateProductSlug(name.Uz ?? name.Ru ?? string.Empty, id);
+        var slug = CreateProductSlug(name, id);
 
         return string.IsNullOrWhiteSpace(baseUrl)
             ? $"/product/{slug}"

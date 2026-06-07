@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VendlyServer.Domain.Entities.Catalogs;
 using VendlyServer.Domain.Entities.Public;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Infrastructure.Authentication;
@@ -10,12 +11,55 @@ public static class DbContextExtensions
 {
     extension(AppDbContext dbContext)
     {
-        public async Task SeedAsync()
+        public async Task SeedAsync(bool isDevelopment)
         {
             IPasswordHasher passwordHasher = new PasswordHasher();
 
             await dbContext.SeedUsersAsync(passwordHasher);
             await dbContext.SeedBtsRefAsync();
+
+            if (isDevelopment)
+                await dbContext.SeedCatalogAsync();
+        }
+
+        private async Task SeedCatalogAsync()
+        {
+            var hasCategories = await dbContext.Categories.AnyAsync();
+            if (hasCategories) return;
+
+            var category = new Category
+            {
+                Name = "Telefonlar",
+                Slug = "telefonlar",
+                IsActive = true,
+            };
+
+            dbContext.Categories.Add(category);
+            await dbContext.SaveChangesAsync();
+
+            var product = new Product
+            {
+                CategoryId = category.Id,
+                Name = "Samsung Galaxy S26 Ultra 5G",
+                Description = "Test mahsulot — HamkorPayment integratsiyasini sinash uchun.",
+                SyncSource = SyncSource.Manual,
+                IsActive = true,
+            };
+
+            dbContext.Products.Add(product);
+            await dbContext.SaveChangesAsync();
+
+            var variant = new ProductVariant
+            {
+                ProductId = product.Id,
+                Name = "12/512 GB",
+                Price = 16_499_000m,
+                Quantity = 50,
+                IsActive = true,
+            };
+
+            dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
         }
 
         private async Task SeedBtsRefAsync()
