@@ -144,6 +144,24 @@ public class CategoryService(
         return Result.Success();
     }
 
+    public async Task<Result> DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await dbContext.Categories.ToListAsync(cancellationToken);
+
+        var imageUrls = categories
+            .Where(c => c.ImageUrl is not null)
+            .Select(c => c.ImageUrl!)
+            .ToList();
+
+        dbContext.Categories.RemoveRange(categories);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        foreach (var url in imageUrls)
+            await TryDeleteFileAsync(url);
+
+        return Result.Success();
+    }
+
     private async Task TryDeleteFileAsync(string fileUrl)
     {
         var result = await storageService.DeleteAsync(fileUrl);

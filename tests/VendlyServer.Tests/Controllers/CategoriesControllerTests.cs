@@ -144,6 +144,7 @@ public class CategoriesControllerTests
         public Result UpdateResult { get; set; } = Result.Success();
         public Result DeleteResult { get; set; } = Result.Success();
         public Result ToggleResult { get; set; } = Result.Success();
+        public Result DeleteAllResult { get; set; } = Result.Success();
 
         public Task<Result<List<CategoryResponse>>> GetAllAsync(CancellationToken ct = default) => Task.FromResult(GetAllResult);
         public Task<Result<CategoryResponse>> GetByIdAsync(long id, CancellationToken ct = default) => Task.FromResult(GetByIdResult);
@@ -151,5 +152,6 @@ public class CategoriesControllerTests
         public Task<Result> UpdateAsync(long id, UpdateCategoryRequest r, CancellationToken ct = default) => Task.FromResult(UpdateResult);
         public Task<Result> DeleteAsync(long id, CancellationToken ct = default) => Task.FromResult(DeleteResult);
         public Task<Result> ToggleActiveAsync(long id, CancellationToken ct = default) => Task.FromResult(ToggleResult);
+        public Task<Result> DeleteAllAsync(CancellationToken ct = default) => Task.FromResult(DeleteAllResult);
     }
 }
