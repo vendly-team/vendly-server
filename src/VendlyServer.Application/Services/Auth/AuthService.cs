@@ -57,9 +57,11 @@ public class AuthService(
 
     public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
+        var tokenHash = HashToken(request.RefreshToken);
+
         var stored = await dbContext.RefreshTokens
             .Include(rt => rt.User)
-            .SingleOrDefaultAsync(rt => rt.Token == request.RefreshToken && !rt.IsDeleted, cancellationToken);
+            .SingleOrDefaultAsync(rt => rt.Token == tokenHash && !rt.IsDeleted, cancellationToken);
 
         if (stored is null || stored.IsRevoked || stored.ExpiresAt < DateTime.UtcNow)
             return AuthErrors.InvalidRefreshToken;
@@ -79,7 +81,7 @@ public class AuthService(
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId    = stored.User.Id,
-            Token     = rawToken,
+            Token     = HashToken(rawToken),
             ExpiresAt = DateTime.UtcNow.AddDays(30)
         });
 
@@ -90,8 +92,10 @@ public class AuthService(
 
     public async Task<Result> LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
+        var tokenHash = HashToken(refreshToken);
+
         var stored = await dbContext.RefreshTokens
-            .SingleOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsDeleted, cancellationToken);
+            .SingleOrDefaultAsync(rt => rt.Token == tokenHash && !rt.IsDeleted, cancellationToken);
 
         if (stored is null || stored.IsRevoked)
             return Result.Success();
@@ -121,7 +125,7 @@ public class AuthService(
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId    = user.Id,
-            Token     = rawToken,
+            Token     = HashToken(rawToken),
             ExpiresAt = DateTime.UtcNow.AddDays(30)
         });
 
@@ -129,6 +133,9 @@ public class AuthService(
 
         return new AuthResponse(accessToken, rawToken, expiresIn, ToUserInfo(user));
     }
+
+    private static string HashToken(string rawToken) =>
+        Convert.ToBase64String(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawToken)));
 
     private static UserInfo ToUserInfo(User user) =>
         new(user.Id, user.FirstName, user.LastName, user.Email, user.Phone, user.Role.ToString().ToLowerInvariant());
