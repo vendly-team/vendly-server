@@ -58,6 +58,14 @@ public class CategoriesController(ICategoryService categoryService) : Authorized
         return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
     }
 
+    /// <summary>Delete all categories permanently.</summary>
+    [HttpDelete]
+    public async Task<IResult> DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await categoryService.DeleteAllAsync(cancellationToken);
+        return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
+    }
+
     /// <summary>Toggle category active/inactive status.</summary>
     [HttpPatch("{id:long}/toggle")]
     public async Task<IResult> ToggleActiveAsync(long id, CancellationToken cancellationToken = default)
