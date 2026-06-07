@@ -1,3 +1,4 @@
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Enums;
 
 namespace VendlyServer.Application.Services.Products.Contracts;
@@ -5,8 +6,8 @@ namespace VendlyServer.Application.Services.Products.Contracts;
 public record ProductAdminDetailResponse(
     long Id,
     long CategoryId,
-    string CategoryName,
-    string Name,
+    MultiLanguageField CategoryName,
+    MultiLanguageField Name,
     string? Description,
     SyncSource SyncSource,
     bool IsActive,

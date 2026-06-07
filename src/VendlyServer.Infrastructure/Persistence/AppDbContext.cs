@@ -136,8 +136,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BtsPostTypeRef>()
             .HasIndex(x => x.BtsId).IsUnique();
 
+        // === Owned entities ===
+
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            modelBuilder.Entity<Category>().OwnsOne(c => c.Name, nav => nav.ToJson());
+            modelBuilder.Entity<Product>().OwnsOne(p => p.Name, nav => nav.ToJson());
+        }
+        else
+        {
+            modelBuilder.Entity<Category>().OwnsOne(c => c.Name);
+            modelBuilder.Entity<Product>().OwnsOne(p => p.Name);
+        }
+
         // === JSONB column types ===
-        
+
         modelBuilder.Entity<Category>()
             .Property(x => x.Metadata).HasColumnType("jsonb");
 

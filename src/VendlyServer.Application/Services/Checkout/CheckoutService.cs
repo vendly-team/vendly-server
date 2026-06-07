@@ -82,7 +82,7 @@ public class CheckoutService(
             order.Items.Add(new OrderItem
             {
                 ProductId = variant.ProductId,
-                ProductNameSnap = variant.Product.Name,
+                ProductNameSnap = variant.Product.Name.Uz ?? variant.Product.Name.Ru ?? string.Empty,
                 SkuSnap = string.IsNullOrWhiteSpace(variant.Name) ? $"VAR-{variant.Id}" : variant.Name,
                 ImageSnap = variant.Images.FirstOrDefault() ?? string.Empty,
                 WeightKgSnap = variant.Measurements?.WeightKg ?? 0,

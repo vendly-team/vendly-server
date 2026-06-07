@@ -5,6 +5,7 @@ using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Products;
@@ -17,7 +18,8 @@ public class ProductService(
 {
     private readonly ClientOptions _clientOptions = clientOptions.Value;
 
-    public async Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default)
+    public async Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request,
+        CancellationToken ct = default)
     {
         var baseQuery = dbContext.Products
             .AsNoTracking()
@@ -37,16 +39,19 @@ public class ProductService(
         var items = products.Select(p =>
         {
             var variants = p.Variants.ToList();
+            var defaultVariant = variants.Count > 0 ? variants.MinBy(v => v.Price) : null;
+
             return new ProductCardResponse(
                 p.Id,
                 p.Name,
                 p.CategoryId,
                 p.Category.Name,
                 p.Description,
-                variants.Count > 0 ? variants.Min(v => (decimal?)v.Price) : null,
+                (decimal?)defaultVariant?.Price,
                 variants.Sum(v => v.Quantity),
                 variants.Count,
                 variants.SelectMany(v => v.Images).FirstOrDefault(),
+                (long?)defaultVariant?.Id,
                 variants.Count > 0 ? variants.OrderBy(v => v.Id).Select(v => (long?)v.Id).FirstOrDefault() : null);
         }).ToList();
 
@@ -93,12 +98,15 @@ public class ProductService(
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
             .Where(p =>
-                p.Name.ToLower().Contains(normalizedQuery) ||
+                (p.Name.Uz != null && p.Name.Uz.ToLower().Contains(normalizedQuery)) ||
+                (p.Name.Ru != null && p.Name.Ru.ToLower().Contains(normalizedQuery)) ||
+                (p.Name.En != null && p.Name.En.ToLower().Contains(normalizedQuery)) ||
                 (p.Description != null && p.Description.ToLower().Contains(normalizedQuery)) ||
-                p.Category.Name.ToLower().Contains(normalizedQuery) ||
+                (p.Category.Name.Uz != null && p.Category.Name.Uz.ToLower().Contains(normalizedQuery)) ||
+                (p.Category.Name.Ru != null && p.Category.Name.Ru.ToLower().Contains(normalizedQuery)) ||
                 p.Variants.Any(v =>
                     !v.IsDeleted &&
-                    ((v.Name != null && v.Name.ToLower().Contains(normalizedQuery)))))
+                    (v.Name != null && v.Name.ToLower().Contains(normalizedQuery))))
             .Select(p => new ProductSearchResponse(
                 p.Id,
                 p.Name,
@@ -113,7 +121,7 @@ public class ProductService(
                     .Distinct()
                     .ToList(),
                 p.Variants.Any(v => !v.IsDeleted && v.IsActive && v.Quantity > 0),
-                BuildRedirectUrl(p.Name, p.Id, clientBaseUrl)))
+                BuildRedirectUrl(p.Name.Uz ?? p.Name.Ru ?? p.Name.En ?? string.Empty, p.Id, clientBaseUrl)))
             .ToListAsync(ct);
 
         return products;
@@ -232,7 +240,8 @@ public class ProductService(
         return Result.Success();
     }
 
-    public async Task<Result> AddVariantTypeAsync(long productId, CreateVariantTypeRequest request, CancellationToken ct = default)
+    public async Task<Result> AddVariantTypeAsync(long productId, CreateVariantTypeRequest request,
+        CancellationToken ct = default)
     {
         var exists = await dbContext.Products
             .AnyAsync(p => p.Id == productId && !p.IsDeleted, ct);
@@ -262,7 +271,8 @@ public class ProductService(
         return Result.Success();
     }
 
-    public async Task<Result> AddVariantOptionAsync(long typeId, CreateVariantOptionRequest request, CancellationToken ct = default)
+    public async Task<Result> AddVariantOptionAsync(long typeId, CreateVariantOptionRequest request,
+        CancellationToken ct = default)
     {
         var exists = await dbContext.VariantTypes
             .AnyAsync(vt => vt.Id == typeId && !vt.IsDeleted, ct);
@@ -312,9 +322,9 @@ public class ProductService(
         var product = await dbContext.Products
             .Where(p => p.Id == productId && !p.IsDeleted)
             .Include(p => p.VariantTypes.Where(vt => !vt.IsDeleted))
-                .ThenInclude(vt => vt.Options.Where(o => !o.IsDeleted))
+            .ThenInclude(vt => vt.Options.Where(o => !o.IsDeleted))
             .Include(p => p.Variants.Where(v => !v.IsDeleted))
-                .ThenInclude(v => v.OptionValues)
+            .ThenInclude(v => v.OptionValues)
             .SingleOrDefaultAsync(ct);
 
         if (product is null) return ProductErrors.NotFound;
@@ -378,7 +388,8 @@ public class ProductService(
         return Result.Success();
     }
 
-    public async Task<Result> BulkUpdateVariantsAsync(long productId, BulkUpdateVariantsRequest request, CancellationToken ct = default)
+    public async Task<Result> BulkUpdateVariantsAsync(long productId, BulkUpdateVariantsRequest request,
+        CancellationToken ct = default)
     {
         var productExists = await dbContext.Products
             .AnyAsync(p => p.Id == productId && !p.IsDeleted, ct);
@@ -424,7 +435,8 @@ public class ProductService(
         return Result.Success();
     }
 
-    public async Task<Result> UpdateVariantAsync(long variantId, UpdateVariantRequest request, CancellationToken ct = default)
+    public async Task<Result> UpdateVariantAsync(long variantId, UpdateVariantRequest request,
+        CancellationToken ct = default)
     {
         var variant = await dbContext.ProductVariants
             .SingleOrDefaultAsync(v => v.Id == variantId && !v.IsDeleted, ct);

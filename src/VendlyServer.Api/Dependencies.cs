@@ -1,7 +1,9 @@
 using System.Reflection;
+using System.Text.Json.Serialization;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using VendlyServer.Api.Converters;
 using VendlyServer.Api.Filters;
 using VendlyServer.Api.Middlewares;
 using VendlyServer.Infrastructure.Extensions.Seed;
@@ -16,6 +18,7 @@ public static class Dependencies
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
+            options.OperationFilter<MlfHeaderFilter>();
             options.SchemaFilter<EnumSchemaFilter>();
 
             // XML comments for Swagger
@@ -54,17 +57,48 @@ public static class Dependencies
         return services;
     }
 
-    public static IServiceCollection ConfigureControllers(this IServiceCollection services)
+    public static IServiceCollection ConfigureExceptionHandler(this IServiceCollection services)
     {
-        services.AddControllers(options =>
-        {
-            options.Filters.Add<ModelValidationFilter>();
-        });
-
         services.AddExceptionHandler<GlobalExceptionHandlerMiddleware>();
         services.AddProblemDetails();
+        return services;
+    }
+
+    public static IServiceCollection ConfigureControllers(this IServiceCollection services)
+    {
+        services.AddHttpContextAccessor();
+
+        services.Configure<RouteOptions>(options =>
+        {
+            options.LowercaseUrls = true;
+            options.LowercaseQueryStrings = true;
+            options.AppendTrailingSlash = true;
+        });
+
+        services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+        {
+            var accessor = services.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>();
+            options.SerializerOptions.Converters.Add(new MultiLanguageFieldConverter(accessor));
+        });
+
+        services.AddControllers(options =>
+        {
+            options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+            options.Filters.Add<ModelValidationFilter>();
+        }).AddJsonOptions(options =>
+        {
+            var serviceProvider = services.BuildServiceProvider();
+            var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+
+            options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals;
+            options.JsonSerializerOptions.Converters.Add(new MultiLanguageFieldConverter(httpContextAccessor));
+            options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        });
+
 
         return services;
+
+
     }
 
     public static IServiceCollection ConfigureCors(this IServiceCollection services)

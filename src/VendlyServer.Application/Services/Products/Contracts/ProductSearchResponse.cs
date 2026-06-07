@@ -1,8 +1,10 @@
+using VendlyServer.Domain.Entities.Common;
+
 namespace VendlyServer.Application.Services.Products.Contracts;
 
 public record ProductSearchResponse(
     long Id,
-    string Name,
+    MultiLanguageField Name,
     decimal Price,
     int SkuCount,
     List<string> Images,

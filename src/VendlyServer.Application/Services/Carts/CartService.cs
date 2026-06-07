@@ -146,7 +146,7 @@ public class CartService(AppDbContext dbContext) : ICartService
                 i.Id,
                 i.ProductVariantId,
                 i.ProductVariant.ProductId,
-                i.ProductVariant.Product.Name,
+                i.ProductVariant.Product.Name.Uz ?? i.ProductVariant.Product.Name.Ru ?? string.Empty,
                 i.ProductVariant.Name,
                 i.ProductVariant.Price,
                 i.ProductVariant.Images,

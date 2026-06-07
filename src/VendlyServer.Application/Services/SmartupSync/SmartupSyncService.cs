@@ -5,11 +5,13 @@ using Microsoft.Extensions.Logging;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Entities.Diagnostics;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Utils;
 using VendlyServer.Infrastructure.Brokers.Smartup;
 using VendlyServer.Infrastructure.Brokers.Smartup.Contracts.Responses;
+using VendlyServer.Infrastructure.Extensions;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.SmartupSync;
@@ -120,9 +122,17 @@ public class SmartupSyncService(
 
             var slug = SlugHelper.ToSlug(cat.Name);
 
+            var localizedName = new MultiLanguageField
+            {
+                Cyrl = cat.Name.LatinToCyrillicUz(),
+                Ru = cat.Name.LatinToCyrillicUz(),
+                Uz = cat.Name.CyrillicToLatinUz(),
+                En = cat.Name.CyrillicToLatinUz()
+            };
+
             if (existing.TryGetValue(cat.ProductTypeId, out var entity))
             {
-                entity.Name = cat.Name;
+                entity.Name = localizedName;
                 entity.Slug = slug;
                 entity.Metadata = metadata;
                 if (imageUrl is not null) entity.ImageUrl = imageUrl;
@@ -132,7 +142,7 @@ public class SmartupSyncService(
             {
                 dbContext.Categories.Add(new Category
                 {
-                    Name = cat.Name,
+                    Name = localizedName,
                     Slug = slug,
                     ImageUrl = imageUrl,
                     IsActive = true,
@@ -260,9 +270,18 @@ public class SmartupSyncService(
                 measure = item.MeasureShortName
             });
 
+            var trimmedName = TrimLastWords(item.Name, 2);
+            var productName = new MultiLanguageField
+            {
+                Cyrl = trimmedName.LatinToCyrillicUz(),
+                Ru = trimmedName.LatinToCyrillicUz(),
+                Uz = trimmedName.CyrillicToLatinUz(),
+                En = trimmedName.CyrillicToLatinUz()
+            };
+
             if (existingDict.TryGetValue(item.ProductId, out var product))
             {
-                product.Name = item.Name;
+                product.Name = productName;
                 product.Description = item.GenName;
                 product.CategoryId = categoryId;
                 product.IsActive = true;
@@ -283,7 +302,7 @@ public class SmartupSyncService(
             {
                 var newProduct = new Product
                 {
-                    Name = item.Name,
+                    Name = productName,
                     Description = item.GenName,
                     CategoryId = categoryId,
                     SyncSource = SyncSource.External,
@@ -328,6 +347,12 @@ public class SmartupSyncService(
                 api_response = call.ResponseBody
             })
         };
+    }
+
+    private static string TrimLastWords(string name, int count)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length <= count ? name : string.Join(' ', parts[..^count]);
     }
 
     private static bool TryGetSourceId(JsonDocument? metadata, out string? sourceId)

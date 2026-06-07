@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VendlyServer.Infrastructure.Persistence;
@@ -12,9 +13,11 @@ using VendlyServer.Infrastructure.Persistence;
 namespace VendlyServer.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260606102241_ProductAndCategoryMultiLanguageField")]
+    partial class ProductAndCategoryMultiLanguageField
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1965,15 +1968,19 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                             b1.Property<long>("CategoryId");
 
                             b1.Property<string>("Cyrl")
+                                .IsRequired()
                                 .HasJsonPropertyName("cyrl");
 
                             b1.Property<string>("En")
+                                .IsRequired()
                                 .HasJsonPropertyName("en");
 
                             b1.Property<string>("Ru")
+                                .IsRequired()
                                 .HasJsonPropertyName("ru");
 
                             b1.Property<string>("Uz")
+                                .IsRequired()
                                 .HasJsonPropertyName("uz");
 
                             b1.HasKey("CategoryId")
@@ -2037,15 +2044,19 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                             b1.Property<long>("ProductId");
 
                             b1.Property<string>("Cyrl")
+                                .IsRequired()
                                 .HasJsonPropertyName("cyrl");
 
                             b1.Property<string>("En")
+                                .IsRequired()
                                 .HasJsonPropertyName("en");
 
                             b1.Property<string>("Ru")
+                                .IsRequired()
                                 .HasJsonPropertyName("ru");
 
                             b1.Property<string>("Uz")
+                                .IsRequired()
                                 .HasJsonPropertyName("uz");
 
                             b1.HasKey("ProductId");

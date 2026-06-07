@@ -42,7 +42,7 @@ public class CategoryService(
     public async Task<Result> AddAsync(CreateCategoryRequest request, CancellationToken cancellationToken = default)
     {
         var existing = await dbContext.Categories
-            .SingleOrDefaultAsync(c => c.Name == request.Name, cancellationToken);
+            .SingleOrDefaultAsync(c => c.Name.Uz == request.Name.Uz, cancellationToken);
 
         if (existing is not null)
         {
