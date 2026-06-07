@@ -19,6 +19,9 @@ public class ProductService(
 
     public async Task<PagedList<ProductCardResponse>> GetAllAsync(ProductFilterRequest request, CancellationToken ct = default)
     {
+        var page = Math.Max(request.Page, 1);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
         var baseQuery = dbContext.Products
             .AsNoTracking()
             .Where(p => !p.IsDeleted && p.IsActive)
@@ -30,8 +33,8 @@ public class ProductService(
             .Include(p => p.Category)
             .Include(p => p.Variants.Where(v => !v.IsDeleted && v.IsActive))
             .OrderByDescending(p => p.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         var items = products.Select(p =>
@@ -54,8 +57,8 @@ public class ProductService(
         {
             Items = items,
             TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
+            Page = page,
+            PageSize = pageSize
         };
     }
 
