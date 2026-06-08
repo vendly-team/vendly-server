@@ -4,12 +4,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Currencies.Contracts;
 using VendlyServer.Domain.Abstractions;
+using VendlyServer.Infrastructure.Brokers.Cbu;
 
 namespace VendlyServer.Application.Services.Currencies;
 
 public class CurrencyConverterService(
     IMemoryCache cache,
     ICurrencyApiClient currencyApiClient,
+    ICbuCurrencyBroker cbuCurrencyBroker,
     IOptions<CurrencyApiOptions> options,
     ILogger<CurrencyConverterService> logger) : ICurrencyConverterService
 {
@@ -61,6 +63,16 @@ public class CurrencyConverterService(
             fromRate,
             toRate,
             convertedAmount);
+    }
+
+    public async Task<Result<CurrencyRateResponse>> GetUsdRateAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await cbuCurrencyBroker.GetUsdRateAsync(cancellationToken);
+        if (!result.IsSuccess)
+            return result.Error;
+
+        var usdRate = result.Data!;
+        return new CurrencyRateResponse(usdRate.Rate, usdRate.Diff, usdRate.Date);
     }
 
     private async Task<Result<decimal>> GetRateAsync(

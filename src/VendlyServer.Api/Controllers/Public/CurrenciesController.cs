@@ -20,4 +20,13 @@ public class CurrenciesController(ICurrencyConverterService currencyConverterSer
         var result = await currencyConverterService.ConvertAsync(from, to, amount, cancellationToken);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
+
+    /// <summary>Get USD rate from CBU.</summary>
+    [AllowAnonymous]
+    [HttpGet("usd-rate")]
+    public async Task<IResult> GetUsdRateAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await currencyConverterService.GetUsdRateAsync(cancellationToken);
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
+    }
 }
