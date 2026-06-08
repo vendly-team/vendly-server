@@ -12,7 +12,7 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
     {
         return await dbContext.RecentlyViewedProducts
             .AsNoTracking()
-            .Where(r => r.UserId == userId)
+            .Where(r => r.UserId == userId && !r.IsDeleted)
             .OrderByDescending(r => r.ViewedAt)
             .Take(MaxItemsPerUser)
             .Select(r => new RecentlyViewedResponse(r.Id, r.ProductId, r.ViewedAt))
@@ -30,7 +30,7 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
         var now = DateTime.UtcNow;
 
         var existing = await dbContext.RecentlyViewedProducts
-            .SingleOrDefaultAsync(r => r.UserId == userId && r.ProductId == request.ProductId, cancellationToken);
+            .SingleOrDefaultAsync(r => r.UserId == userId && r.ProductId == request.ProductId && !r.IsDeleted, cancellationToken);
 
         if (existing is not null)
         {
@@ -66,7 +66,7 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
         if (validProductIds.Count == 0) return Result.Success();
 
         var existing = await dbContext.RecentlyViewedProducts
-            .Where(r => r.UserId == userId && validProductIds.Contains(r.ProductId))
+            .Where(r => r.UserId == userId && validProductIds.Contains(r.ProductId) && !r.IsDeleted)
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -104,12 +104,14 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
     public async Task<Result> ClearAsync(long userId, CancellationToken cancellationToken = default)
     {
         var entries = await dbContext.RecentlyViewedProducts
-            .Where(r => r.UserId == userId)
+            .Where(r => r.UserId == userId && !r.IsDeleted)
             .ToListAsync(cancellationToken);
 
         if (entries.Count == 0) return Result.Success();
 
-        dbContext.RecentlyViewedProducts.RemoveRange(entries);
+        foreach (var entry in entries)
+            entry.IsDeleted = true;
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
@@ -117,14 +119,16 @@ public class RecentlyViewedService(AppDbContext dbContext) : IRecentlyViewedServ
     private async Task TrimToMaxAsync(long userId, CancellationToken cancellationToken)
     {
         var overflow = await dbContext.RecentlyViewedProducts
-            .Where(r => r.UserId == userId)
+            .Where(r => r.UserId == userId && !r.IsDeleted)
             .OrderByDescending(r => r.ViewedAt)
             .Skip(MaxItemsPerUser)
             .ToListAsync(cancellationToken);
 
         if (overflow.Count == 0) return;
 
-        dbContext.RecentlyViewedProducts.RemoveRange(overflow);
+        foreach (var entry in overflow)
+            entry.IsDeleted = true;
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }
