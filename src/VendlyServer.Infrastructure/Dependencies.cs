@@ -1,12 +1,12 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using VendlyServer.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using VendlyServer.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
+using VendlyServer.Infrastructure.Brokers.Hamkor;
 
 namespace VendlyServer.Infrastructure;
 
@@ -19,7 +19,8 @@ public static class Dependencies
             .ConfigureDbContext(configuration)
             .ConfigureAuthentication()
             .ConfigureBtsExpress()
-            .ConfigureSmartup();
+            .ConfigureSmartup()
+            .ConfigureHamkor();
 
         return services;
     }
@@ -67,11 +68,21 @@ public static class Dependencies
 
     private static IServiceCollection ConfigureSmartup(this IServiceCollection services)
     {
-        services.ConfigureOptions<SmartupOptionsSetup>();
-        services.AddSingleton<IValidateOptions<SmartupOptions>, SmartupOptionsValidator>();
-        services.AddOptions<SmartupOptions>().ValidateOnStart();
+        services.AddOptions<SmartupOptions>()
+            .BindConfiguration(SmartupOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.AddHttpClient("Smartup");
         services.AddSingleton<ISmartupBroker, SmartupBroker>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureHamkor(this IServiceCollection services)
+    {
+        services.ConfigureOptions<HamkorOptionsSetup>();
+        services.AddHttpClient("Hamkor");
+        services.AddSingleton<IHamkorBroker, HamkorBroker>();
 
         return services;
     }
