@@ -6,10 +6,10 @@ public class SmartupOptions
 {
     public const string SectionName = "Smartup";
 
-    [Required, Url]
+    [Required]
     public string BaseUrl { get; set; } = string.Empty;
 
-    [Required, Url]
+    [Required]
     public string ImageBaseUrl { get; set; } = string.Empty;
 
     [Required]

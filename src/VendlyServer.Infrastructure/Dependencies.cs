@@ -68,8 +68,8 @@ public static class Dependencies
 
     private static IServiceCollection ConfigureSmartup(this IServiceCollection services)
     {
+        services.ConfigureOptions<SmartupOptionsSetup>();
         services.AddOptions<SmartupOptions>()
-            .BindConfiguration(SmartupOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddHttpClient("Smartup");
