@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -52,6 +53,11 @@ public class CheckoutService(
                 Qty: 1))
             .ToList();
 
+        // The bank expects "details" entries in Tashkent local time, dd.MM.yyyy format.
+        // Fallback to UTC+5 offset if the OS image is missing the IANA tzdata entry.
+        var tashkentTime = TryConvertToTashkent(order.CreatedAt);
+        var createdAtFormatted = tashkentTime.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+
         var urlResult = await hamkorBroker.CreatePaymentUrlAsync(
             new HamkorCreatePaymentUrlRequest
             {
@@ -61,6 +67,10 @@ public class CheckoutService(
                 FailureUrl = failureUrl,
                 CallbackUrl = callbackUrl,
                 Items = fiscalItems,
+                Details =
+                [
+                    new HamkorDetailField { Field = "created_at", Value = createdAtFormatted },
+                ],
             },
             cancellationToken);
 
@@ -164,5 +174,25 @@ public class CheckoutService(
 
         foreach (var item in cartItems)
             item.IsDeleted = true;
+    }
+
+    // Try the IANA id first (Linux containers), fall back to the Windows id, then to a fixed UTC+5 offset.
+    private static DateTime TryConvertToTashkent(DateTime utc)
+    {
+        try
+        {
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent"));
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            try
+            {
+                return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time"));
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return utc.AddHours(5);
+            }
+        }
     }
 }
