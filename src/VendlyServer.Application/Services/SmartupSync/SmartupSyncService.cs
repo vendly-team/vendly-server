@@ -98,7 +98,7 @@ public class SmartupSyncService(
         return Result.Success();
     }
 
-    // ── Categories ────────────────────────────────────────────────────────
+    // ── Categories ────────────────────────────────────────────────────────────────
 
     private async Task<(Dictionary<string, long> idMap, int created, int updated)> SyncCategoriesAsync(
         List<SmartupCategoryItem> categories, long logId, CancellationToken cancellationToken)
@@ -157,17 +157,19 @@ public class SmartupSyncService(
         logger.LogInformation("Smartup Sync [{LogId}]: categories — +{Created} ~{Updated}",
             logId, created, updated);
 
-        var idMap = await dbContext.Categories
+        var allCategories = await dbContext.Categories
+            .AsNoTracking()
             .Where(c => !c.IsDeleted && c.Metadata != null)
-            .ToListAsync(cancellationToken)
-            .ContinueWith(t => t.Result
-                .Where(c => TryGetSourceId(c.Metadata, out _))
-                .ToDictionary(c => GetSourceId(c.Metadata)!, c => c.Id));
+            .ToListAsync(cancellationToken);
+
+        var idMap = allCategories
+            .Where(c => TryGetSourceId(c.Metadata, out _))
+            .ToDictionary(c => GetSourceId(c.Metadata)!, c => c.Id);
 
         return (idMap, created, updated);
     }
 
-    // ── Products ──────────────────────────────────────────────────────────
+    // ── Products ────────────────────────────────────────────────────────────────
 
     private async Task<(int created, int updated, int errors, List<object> details)> SyncProductsAsync(
         List<SmartupCategoryItem> categories,
@@ -327,7 +329,7 @@ public class SmartupSyncService(
         return (created, updated);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     private static SyncLog CreateRequestLog<T>(string correlationId, SmartupCallResult<T> call)
     {
