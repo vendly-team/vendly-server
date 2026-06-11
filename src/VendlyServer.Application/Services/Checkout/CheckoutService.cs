@@ -128,14 +128,15 @@ public class CheckoutService(
         {
             order.Payment.Status = PaymentStatus.Paid;
             order.Payment.PaidAt = DateTime.UtcNow;
-            order.Status = OrderStatus.Accepted;
+            order.Status = OrderStatus.Payed;
             order.StatusHistory.Add(new OrderStatusHistory
             {
-                Status = OrderStatus.Accepted,
+                Status = OrderStatus.Payed,
                 Note = "Payment confirmed via Hamkorbank"
             });
 
-            await ClearCartAsync(order.UserId, cancellationToken);
+            // Order o'z cartiga ega (allaqachon checked-out) — to'lovdan keyin u faqat status bo'yicha
+            // bloklanadi. Foydalanuvchining keyingi open carti talab bo'yicha yangidan yaratiladi.
         }
         else if (state is HamkorPaymentState.Canceled)
         {
@@ -164,16 +165,6 @@ public class CheckoutService(
 
         var paymentStatus = order.Payment?.Status.ToString() ?? PaymentStatus.Pending.ToString();
         return new CheckoutStatusResponse(order.OrderNumber, paymentStatus, order.Status.ToString());
-    }
-
-    private async Task ClearCartAsync(long userId, CancellationToken cancellationToken)
-    {
-        var cartItems = await dbContext.CartItems
-            .Where(i => i.Cart.UserId == userId && !i.IsDeleted)
-            .ToListAsync(cancellationToken);
-
-        foreach (var item in cartItems)
-            item.IsDeleted = true;
     }
 
     // Try the IANA id first (Linux containers), fall back to the Windows id, then to a fixed UTC+5 offset.

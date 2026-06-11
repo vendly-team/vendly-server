@@ -8,8 +8,8 @@ public interface IOrderService
     // Customer — checkout flow
     Task<Result<CreateOrderResponse>> CreateDraftAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default);
     Task<Result> SetAddressAsync(long userId, long id, SetOrderAddressRequest request, CancellationToken cancellationToken = default);
-    Task<Result<CreateOrderResponse>> GetMyDraftAsync(long userId, CancellationToken cancellationToken = default);
-    Task<Result> CancelMyDraftAsync(long userId, CancellationToken cancellationToken = default);
+    Task<Result<List<OrderListItemResponse>>> GetActiveOrdersAsync(long userId, CancellationToken cancellationToken = default);
+    Task<Result> CancelDraftAsync(long userId, long orderId, CancellationToken cancellationToken = default);
 
     // Customer — read
     Task<Result<List<OrderListItemResponse>>> GetMyOrdersAsync(long userId, OrderFilterRequest filter, CancellationToken cancellationToken = default);

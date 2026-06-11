@@ -1,150 +1,130 @@
-# Category Pricing + dynamic price markup
+# Edit-until-paid cart + one unpaid order at a time
 
 ## Context
 
-`ProductVariant.Price` is stored as a **USD base price** (from Smartup sync / admin). Today every product GET returns this raw USD number directly as if it were the final price. The business needs the storefront to show **soum prices** that are:
+Today the order flow is **one cart per user → one active order**:
+- `Cart` is a single per-user shopping cart (`CartService.FindCartWithItemsAsync` = first cart by `UserId`).
+- `POST /api/orders` (`OrderService.CreateDraftAsync`) snapshots that cart into a **Draft** order (reusing the single existing Draft/New order if present).
+- `CartService` blocks edits via `HasActiveOrderAsync` (`Cart.CheckoutInProgress`) the moment an order reaches `New`.
+- Hamkor webhook (`CheckoutService.HandleCallbackAsync`) confirms payment, then clears the user's cart.
 
-1. converted from USD → soum via the live CBU rate, then
-2. marked up by a **per-category** rule (percent **or** a fixed soum amount), with a **start/end date** window, then
-3. **rounded up** ("yaxshilash") to a configurable step.
+The user wants:
+1. **Edit the active order's cart until it is paid** — add/remove items while status is `Draft` or `New` (locked only at `Payed`).
+2. **Multiple "active" orders** — i.e. a user can have several orders being fulfilled (`Payed` → `Delivered`).
+3. **Create a new order after the previous is paid** — placing/paying must not permanently block new orders.
+4. **At most ONE unpaid order (`Draft`/`New`) at a time** — to create a *new* order, the previous one must be **at least `Payed`**.
 
-When a category has no active rule, a **global default** (default markup % + default rounding step) from `appsettings.json` is used. The same convert → markup → round transform must be applied everywhere a price is returned to the customer (product list, search, detail, cart) and captured at checkout (order snapshot).
+So the unpaid/checkout stage is a **single, editable order**; once paid it joins the set of in-fulfillment orders and a fresh one can begin.
 
-This requires: (a) a new **CategoryPrice** entity + CRUD API, (b) global default options, (c) a central **pricing service**, and (d) wiring that service into all customer-facing price surfaces.
+Decisions confirmed:
+- Each order owns its own `Cart` (1:1 via `Order.CartId`); paid orders keep their cart, the user gets a fresh open cart.
+- Cart editable in **Draft + New**, locked at **Payed**.
+- On cart change, the active draft's `OrderItem` snapshots + `Subtotal`/`TotalAmount` **auto re-sync**.
 
-Decisions confirmed with the user:
-- Global default lives in **appsettings.json** (`IOptions`), not DB.
-- Fixed-type value is **additive** markup (`soum + fixedValue`), same as percent.
-- Rounding = **ceil to step** (`Math.Ceiling(v / step) * step`).
-- Scope = **all product GETs + cart + order snapshot**. The detail endpoint is treated as a display surface (returns transformed price).
+**Prerequisite (build is currently broken):** the WIP edit to `Domain/Enums/OrderStatus.cs` removed `Accepted` and renumbered values (`Payed = 5` is now "payment confirmed"), but `CheckoutService` and `OrderStatusTransitions` still reference `OrderStatus.Accepted`.
 
 ---
 
-## 1. Domain — enum + entity
+## 1. Prerequisite — finish the `Accepted → Payed` rename
 
-**`Domain/Enums/PriceMarkupType.cs`**
+- `Application/Services/Checkout/CheckoutService.cs` (~131, ~134): `OrderStatus.Accepted` → `OrderStatus.Payed`.
+- `Application/Services/Orders/OrderStatusTransitions.cs` (~15, ~26): `OrderStatus.Accepted` → `OrderStatus.Payed`.
+- `grep` to confirm no other `OrderStatus.Accepted` refs.
+
+**Data migration** (enum stored as int; renumbered with an old/new `5` collision → single `CASE` so each branch sees the original value). In the new migration `Up()`, raw SQL on `orders.orders` **and** `orders.order_status_histories`:
+```sql
+UPDATE orders.orders SET status = CASE status
+  WHEN 1 THEN 5  WHEN 2 THEN 5   -- old Accepted, old Payed → Payed(5)
+  WHEN 3 THEN 10 WHEN 4 THEN 15  WHEN 5 THEN 20  WHEN 6 THEN 25
+  WHEN 7 THEN 30 WHEN 8 THEN 35  WHEN 9 THEN 40  WHEN 10 THEN 45
+  ELSE status END;  -- Draft(-1), New(0) unchanged
+```
+
+---
+
+## 2. Data model — open vs. consumed cart
+
+**`Domain/Entities/Orders/Cart.cs`** — add:
 ```csharp
-public enum PriceMarkupType { Percent, Fixed }
+public bool IsCheckedOut { get; set; }   // false = open shopping cart; true = attached to an order
 ```
+- **Open cart** = `Carts.Where(c => c.UserId == userId && !c.IsDeleted && !c.IsCheckedOut)` (get-or-create; the cart used before an order exists).
+- `Order.CartId` already links order→cart 1:1.
 
-**`Domain/Entities/Catalogs/CategoryPrice.cs`** — `AuditableModelBase<long>`, table `catalogs.category_prices`:
-```csharp
-public long CategoryId { get; set; }
-public PriceMarkupType MarkupType { get; set; }     // Percent yoki Fixed
-[Column(TypeName = "decimal(18,2)")] public decimal Value { get; set; }  // percent (e.g. 15) yoki soum miqdori
-[Column(TypeName = "decimal(18,2)")] public decimal? RoundingStep { get; set; } // null → default
-public DateTime? StartDate { get; set; }
-public DateTime? EndDate { get; set; }
-[ForeignKey(nameof(CategoryId))] public Category Category { get; set; } = null!;
-```
-Add `public ICollection<CategoryPrice> Prices { get; set; } = [];` to `Category.cs`.
-
-**`Infrastructure/Persistence/AppDbContext.cs`** — add `public DbSet<CategoryPrice> CategoryPrices { get; set; }`.
-
-Migration: `dotnet ef migrations add Add_CategoryPrice` (from `src/VendlyServer.Infrastructure`, startup project `../VendlyServer.Api`).
-
-A category may have multiple rows (scheduled windows). "Active" = `!IsDeleted && (StartDate == null || StartDate <= now) && (EndDate == null || EndDate >= now)`. If several match, pick the latest by `StartDate` then `CreatedAt`.
+Migration `Add_Cart_IsCheckedOut` — also carries the §1 enum data-migration SQL.
 
 ---
 
-## 2. Global default — Options (appsettings.json)
+## 3. The single "active cart" + re-sync (core behaviour)
 
-**`Application/Services/Pricing/PricingOptions.cs`** (mirror `CurrencyApiOptions` + `CurrencyApiOptionsSetup`):
-```csharp
-public const string SectionName = "Pricing";
-public decimal DefaultMarkupPercent { get; set; } = 0;   // default foiz
-public decimal DefaultRoundingStep  { get; set; } = 0;   // 0 → rounding off
+The user always edits **one** cart. Resolve it as:
+- If the user has a **Draft/New** order → that order's `Cart` (editing it re-syncs the order).
+- Else → the **open** cart (get-or-create, `IsCheckedOut == false`).
+
+`Application/Services/Carts/CartService.cs`:
+- Add `ResolveActiveCartAsync(userId)` → returns the active `Cart` **and** its linked Draft/New `Order` (or null). `GetOrCreateAsync`, `AddItemAsync`, `UpdateItemAsync`, `RemoveItemAsync` all operate on this.
+- **Remove** `HasActiveOrderAsync` + all `CheckoutInProgress` returns and `CartResponse.IsLocked` (the active cart is by definition never paid; once paid it stops being the active cart).
+- After any add/update/remove, **if the active cart belongs to a Draft/New order**: re-sync that order via the shared helper below, and **if its status is `New`, revert to `Draft`** (the prior Hamkor amount is stale → re-initiate required).
+- Pricing display already wired via `IProductPricingService`.
+
+**Shared re-sync helper** — extract the snapshot logic currently inside `CreateDraftAsync` into a reusable method (e.g. static `OrderItemSync.Apply(order, cart, pricing)` or a small internal service) used by both `CartService` and `OrderService`:
 ```
-Add `PricingOptionsSetup : IConfigureOptions<PricingOptions>` + register via `services.ConfigureOptions<PricingOptionsSetup>()` in `Dependencies.ConfigureApplication`.
-
-Add to **all** `appsettings*.json`:
-```json
-"Pricing": { "DefaultMarkupPercent": 0, "DefaultRoundingStep": 1000 }
+// soft-delete order.Items; rebuild from cart.Items using pricing.CalculateSoumPrice
+// (PriceSnap/TotalSnap); recompute Subtotal + TotalAmount (+ DeliveryCost)
 ```
+`CartService` already injects `IProductPricingService` for `CreateContextAsync`.
 
 ---
 
-## 3. Pricing service (core logic)
+## 4. OrderService — one draft, multiple paid, create-after-paid
 
-**`Application/Services/Pricing/`**: `IProductPricingService`, `ProductPricingService`, `PricingContext`, `PricingErrors`.
+`Application/Services/Orders/OrderService.cs`:
 
-`ProductPricingService(ICurrencyConverterService currency, AppDbContext db, IOptions<PricingOptions> options)`:
+**Create (`CreateDraftAsync`):**
+- **Guard:** if the user has any `Draft`/`New` order → `OrderErrors.ActiveOrderExists` (must pay/finish it first). This enforces "one unpaid at a time".
+- Else: load the **open** cart (non-empty, else `CartEmpty`), create a Draft order with `CartId = openCart.Id`, set `openCart.IsCheckedOut = true`, snapshot items via the shared helper.
+- **Remove** the old "reuse existing Draft/New order" branch.
+- After a previous order is `Payed`, the open cart resolves fresh → create works again (requirement 3).
 
-```csharp
-Task<Result<PricingContext>> CreateContextAsync(CancellationToken ct)
-```
-- `currency.GetUsdRateAsync(ct)` → if fail, return `PricingErrors.RateUnavailable`.
-- Load all active `CategoryPrice` rows (`AsNoTracking`, the active-window filter above), reduce to one rule per `CategoryId`.
-- Return `PricingContext(usdRate, rulesByCategoryId, options.Value)`.
-
-`PricingContext.CalculateSoumPrice(decimal usdPrice, long categoryId)`:
-```csharp
-var soum = usdPrice * _usdRate;
-var rule = _rules.GetValueOrDefault(categoryId);
-decimal markup = rule is null
-    ? soum * _defaults.DefaultMarkupPercent / 100m
-    : rule.MarkupType == PriceMarkupType.Percent ? soum * rule.Value / 100m : rule.Value;
-var final = soum + markup;
-var step = rule?.RoundingStep ?? _defaults.DefaultRoundingStep;
-return step > 0 ? Math.Ceiling(final / step) * step : final;
-```
-
-Loading the rate + rules **once per request** (context) avoids N CBU calls / N queries when mapping a list. Register `IProductPricingService` scoped in `Dependencies`.
-
-`PricingErrors.RateUnavailable = Error.Failure("Pricing.RateUnavailable")`.
-
-**Failure handling:** money path (checkout) must **hard-fail**; display paths fall back to raw price + a warning log (see §5).
+**Active orders / cancel:**
+- Replace `GetMyDraftAsync` with `GetActiveOrdersAsync(userId)` → all non-terminal orders (`Draft, New, Payed, Preparing, Shipped, InTransit, OutForDelivery`) — the "active" set.
+- `CancelMyDraftAsync` → `CancelDraftAsync(userId, orderId)` for the single Draft/New order.
+- Add `OrderErrors.ActiveOrderExists` (Conflict `Order.ActiveOrderExists`).
 
 ---
 
-## 4. CategoryPrice CRUD feature (12-step backend pattern)
+## 5. Checkout — remove user-cart clearing
 
-`Application/Services/CategoryPrices/`:
-- `CategoryPriceErrors.cs` — `NotFound`, `CategoryNotFound`.
-- `Contracts/CreateCategoryPriceRequest.cs` (CategoryId, MarkupType, Value, RoundingStep?, StartDate?, EndDate?) + `CreateCategoryPriceRequestValidator` (Value ≥ 0; if Percent, Value ≤ some sane max; EndDate ≥ StartDate when both set; category exists check stays in service).
-- `Contracts/UpdateCategoryPriceRequest.cs` + validator.
-- `Contracts/CategoryPriceResponse.cs` (Id, CategoryId, MarkupType, Value, RoundingStep, StartDate, EndDate, timestamps).
-- `ICategoryPriceService` + `CategoryPriceService` — full CRUD following `CategoryService`/`ProductService` conventions (`AsNoTracking` reads, soft-delete via `IsDeleted`, `SaveChangesAsync` only in service, `Result` returns, validate `CategoryId` exists on create/update).
-- Register in `Dependencies`.
-
-**`Api/Controllers/Catalog/CategoryPricesController.cs`** (`[Route("api/category-prices")]`, `[Authorize(Roles = "Admin,Manager")]`, XML comments) — GET all (optional `?categoryId=`), GET by id, POST, PUT, DELETE. Mirror `CategoriesController`.
+`Application/Services/Checkout/CheckoutService.cs`:
+- `InitiatePaymentAsync` stays `Draft`-only (cart edits in `New` revert to `Draft`, so re-initiation re-prices correctly).
+- In `HandleCallbackAsync`, **remove `ClearCartAsync(order.UserId)`** — the paid order keeps its own cart (locked by status); the user's next open cart is created fresh on demand. Delete `ClearCartAsync`.
 
 ---
 
-## 5. Apply transform at every price surface
+## 6. Controllers / endpoints
 
-Inject `IProductPricingService` into `ProductService`, `CartService`, `OrderService`. Build the context once at the start of each read/checkout.
-
-**`ProductService.GetAllAsync`** (`ProductCardResponse.MinPrice`): after `ToListAsync`, build context; map `MinPrice = ctx.CalculateSoumPrice((decimal)defaultVariant.Price, p.CategoryId)`. On context failure: log warning, leave raw price (method returns `PagedList`, not `Result`).
-
-**`ProductService.SearchAsync`**: change the SQL projection to select an intermediate (include `p.CategoryId` + raw min price), materialize, then map to `ProductSearchResponse` applying `CalculateSoumPrice` in memory. Same soft-fallback on context failure.
-
-**`ProductService.GetByIdAsync`** (`ProductAdminDetailResponse` → each `ProductVariantResponse.Price`): materialize is already in-DB projection; restructure to fetch raw, then map variants applying `CalculateSoumPrice(v.Price, p.CategoryId)`. (Per user: detail endpoint returns the transformed display price.)
-> ⚠️ Admin-edit caveat: this endpoint is also used by the admin panel. Admin variant-edit forms must treat the variant base price as raw USD and **not** re-submit the transformed value via `BulkUpdate`/`UpdateVariant`. Flagged for confirmation during implementation; the write endpoints themselves are unchanged (they accept raw USD).
-
-**`CartService.MapToResponse`**: convert from `static` to an instance method (or pass `PricingContext`); apply `CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId)` per item; `TotalAmount` then sums transformed prices. `Product` is already `Include`d (CategoryId available). Build context in the public read method(s) that call `MapToResponse`. Soft-fallback to raw on failure.
-
-**`OrderService.CreateOrderAsync`** (money path — both the existing-draft branch and the new-order branch, lines ~82 & ~129): build context at method start; **if context fails, return `PricingErrors.RateUnavailable`** (no silent raw fallback). Set `PriceSnap = ctx.CalculateSoumPrice(variant.Price, variant.Product.CategoryId)` and `TotalSnap = PriceSnap * Qty`; `Subtotal`/`TotalAmount` computed from the transformed snapshot. `variant.Product` is already loaded. Order GETs read the stored snapshot unchanged (no double transform).
-
-No change to RecentlyViewed/Wishlist (they expose no price) or to admin product **list** (`GetAllAdminAsync` has no price).
+- `CartsController` — **shape unchanged**; now edits the active cart (open or the single draft) and re-syncs the draft. No more lock. No separate order-item endpoints needed.
+- `Api/Controllers/Orders/OrdersController.cs`:
+  - `GET /api/orders/active` → `GetActiveOrdersAsync` (replaces `GET /api/orders/draft`).
+  - `DELETE /api/orders/{id:long}` → `CancelDraftAsync` (replaces `DELETE /api/orders/draft`).
 
 ---
 
-## 6. Files touched (summary)
+## 7. Frontend impact (note — backend-first; separate follow-up)
 
-New: `PriceMarkupType.cs`, `CategoryPrice.cs`, `Pricing/*` (4 files), `CategoryPrices/*` (~7 files), `CategoryPricesController.cs`, migration.
-Edited: `Category.cs`, `AppDbContext.cs`, `Dependencies.cs`, `appsettings*.json` (×4), `ProductService.cs`, `CartService.cs`, `OrderService.cs`.
+`vendly-client` assumes single cart + single draft (`/api/orders/draft`, cart `IsLocked`). After this it should: keep using `/api/carts` (edits resolve to the active draft automatically), list in-fulfillment orders via `/api/orders/active`, and allow a new order once the prior is paid. Out of scope unless requested.
 
 ---
 
-## 7. Verification
+## 8. Verification
 
-1. `dotnet build` the solution — no errors.
-2. `dotnet ef database update` — `category_prices` table created.
-3. Set `Pricing.DefaultRoundingStep=1000`, `DefaultMarkupPercent=10` in `appsettings.Development.json`. Run the API.
-4. `GET /api/products` for a category **without** a CategoryPrice → verify `minPrice ≈ ceil(usd * cbuRate * 1.10 / 1000) * 1000`.
-5. `POST /api/category-prices` `{ categoryId, markupType: "Percent", value: 25, roundingStep: 5000 }`. Re-GET the same category → price now uses 25% + 5000 step. Repeat with `markupType: "Fixed", value: 30000` → verify additive fixed markup.
-6. Set a `startDate`/`endDate` window in the future → verify the rule is ignored (falls back to default) until active.
-7. `GET /api/products/{id}`, `GET /api/products/search?q=`, and cart GET → all show transformed soum prices.
-8. Add to cart → create order (`checkout`/order draft) → confirm `OrderItem.PriceSnap` is the transformed soum value; re-GET the order → snapshot unchanged.
-9. Temporarily break the CBU rate (bad API key) → checkout returns `Pricing.RateUnavailable`; product list logs a warning and degrades to raw (display only).
+1. `dotnet build` — `Accepted` errors gone.
+2. `dotnet ef database update` — `is_checked_out` added; existing statuses remapped (check one order before/after).
+3. `POST /api/carts/items` → `GET /api/carts` shows items (open cart).
+4. `POST /api/orders` → Draft created from open cart.
+5. `POST /api/carts/items` again → edits the **same draft's** cart; `GET /api/orders/{id}` shows re-synced `Subtotal`/`TotalAmount`.
+6. `POST /api/orders` again → `Order.ActiveOrderExists` (draft still unpaid).
+7. `POST /api/orders/{id}/payment` → `New`; then `POST /api/carts/items` → succeeds and order reverts to `Draft`.
+8. Simulate webhook confirm → `Payed`; `GET /api/carts` now returns a **fresh empty** open cart; `POST /api/orders` → new Draft (requirement 3 ✓).
+9. `GET /api/orders/active` lists the paid order + the new draft.
+10. `dotnet test` — fix `CartServiceTests` (lock removed); add coverage for one-draft guard + edit-until-paid + create-after-paid.
