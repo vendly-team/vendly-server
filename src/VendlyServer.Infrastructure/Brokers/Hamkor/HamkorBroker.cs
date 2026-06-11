@@ -94,6 +94,7 @@ public class HamkorBroker(
                     Tin = options.Tin,
                     VatPercent = options.VatPercent,
                 },
+                Details = request.Details?.ToArray(),
             },
             cancellationToken);
 

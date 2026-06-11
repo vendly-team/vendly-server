@@ -56,6 +56,16 @@ public sealed record HamkorRpcError
 // AmountMinorUnits is the total for the line (price * qty) in tiyin.
 public sealed record HamkorCreatePaymentItem(long AmountMinorUnits, int Qty);
 
+// One name/value pair surfaced on the bank's invoice/receipt screen (e.g. {"created_at","17.07.2024"}).
+public sealed record HamkorDetailField
+{
+    [JsonPropertyName("field")]
+    public required string Field { get; init; }
+
+    [JsonPropertyName("value")]
+    public required string Value { get; init; }
+}
+
 // Input contract for the broker. Add new fields here when the payment request grows.
 public sealed record HamkorCreatePaymentUrlRequest
 {
@@ -72,6 +82,9 @@ public sealed record HamkorCreatePaymentUrlRequest
 
     // Fiscal lines — sum of (AmountMinorUnits * Qty) must equal AmountMinorUnits above.
     public required IReadOnlyList<HamkorCreatePaymentItem> Items { get; init; }
+
+    // Optional extra metadata (e.g. created_at) the bank can render on the receipt/admin view.
+    public IReadOnlyList<HamkorDetailField>? Details { get; init; }
 }
 
 public sealed record HamkorCreateUrlParams
@@ -100,6 +113,11 @@ public sealed record HamkorCreateUrlParams
     // Without this the page shows "wrong invoice" (error_code 1014).
     [JsonPropertyName("fiscal_data")]
     public HamkorFiscalData? FiscalData { get; init; }
+
+    // Free-form name/value pairs shown by the bank's invoice screen (omitted when null).
+    [JsonPropertyName("details")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HamkorDetailField[]? Details { get; init; }
 }
 
 public sealed record HamkorFiscalData
