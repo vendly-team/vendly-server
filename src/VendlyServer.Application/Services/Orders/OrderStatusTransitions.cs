@@ -12,7 +12,7 @@ public static class OrderStatusTransitions
 {
     private static readonly Dictionary<OrderStatus, OrderStatus[]> Allowed = new()
     {
-        [OrderStatus.Accepted] = [OrderStatus.Preparing],
+        [OrderStatus.Payed] = [OrderStatus.Preparing],
         [OrderStatus.Preparing] = [OrderStatus.Shipped],
         [OrderStatus.Shipped] = [OrderStatus.InTransit],
         [OrderStatus.InTransit] = [OrderStatus.OutForDelivery],
@@ -23,7 +23,7 @@ public static class OrderStatusTransitions
     [
         OrderStatus.Draft,
         OrderStatus.New,
-        OrderStatus.Accepted,
+        OrderStatus.Payed,
         OrderStatus.Preparing,
         OrderStatus.Shipped,
         OrderStatus.InTransit,

@@ -14,5 +14,7 @@ public static class OrderErrors
     public static readonly Error CartEmpty = Error.Validation("Order.CartEmpty", "Cart is empty.");
     public static readonly Error AddressNotFound = Error.NotFound("Order.AddressNotFound");
     public static readonly Error NotDraft = Error.Validation("Order.NotDraft", "Order is not in draft status.");
+    public static readonly Error ActiveOrderExists = Error.Conflict("Order.ActiveOrderExists");
+    public static readonly Error NotEditable = Error.Conflict("Order.NotEditable");
     public static readonly Error PaymentFailed = Error.Failure("Order.PaymentFailed");
 }

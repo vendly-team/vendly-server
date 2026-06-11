@@ -38,19 +38,19 @@ public class OrdersController(IOrderService orderService, ICheckoutService check
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
-    /// <summary>Cancel the current user's active draft order and unlock the cart.</summary>
-    [HttpDelete("draft")]
-    public async Task<IResult> CancelMyDraftAsync(CancellationToken cancellationToken = default)
+    /// <summary>Cancel one of the current user's unpaid (draft/new) orders.</summary>
+    [HttpDelete("{id:long}")]
+    public async Task<IResult> CancelDraftAsync(long id, CancellationToken cancellationToken = default)
     {
-        var result = await orderService.CancelMyDraftAsync(UserId, cancellationToken);
+        var result = await orderService.CancelDraftAsync(UserId, id, cancellationToken);
         return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
     }
 
-    /// <summary>Get the current user's active draft or new order (if any).</summary>
-    [HttpGet("draft")]
-    public async Task<IResult> GetMyDraftAsync(CancellationToken cancellationToken = default)
+    /// <summary>List the current user's active orders (draft/new + in-fulfillment).</summary>
+    [HttpGet("active")]
+    public async Task<IResult> GetActiveAsync(CancellationToken cancellationToken = default)
     {
-        var result = await orderService.GetMyDraftAsync(UserId, cancellationToken);
+        var result = await orderService.GetActiveOrdersAsync(UserId, cancellationToken);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 

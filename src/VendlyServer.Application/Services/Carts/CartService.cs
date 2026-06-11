@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using VendlyServer.Application.Services.Carts.Contracts;
+using VendlyServer.Application.Services.Orders;
 using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
@@ -16,18 +17,9 @@ public class CartService(
 {
     public async Task<Result<CartResponse>> GetOrCreateAsync(long userId, CancellationToken cancellationToken = default)
     {
-        var cart = await FindCartWithItemsAsync(userId, cancellationToken);
-
-        if (cart is null)
-        {
-            cart = new Cart { UserId = userId };
-            dbContext.Carts.Add(cart);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        var locked = await HasActiveOrderAsync(cart.Id, cancellationToken);
+        var (cart, _) = await ResolveActiveCartAsync(userId, cancellationToken);
         var pricing = await ResolvePricingContextAsync(cancellationToken);
-        return MapToResponse(cart, pricing, locked);
+        return MapToResponse(cart, pricing);
     }
 
     public async Task<Result<CartResponse>> AddItemAsync(long userId, CartItemRequest request, CancellationToken cancellationToken = default)
@@ -39,24 +31,12 @@ public class CartService(
 
         if (variant is null) return CartErrors.VariantNotFound;
 
-        var cart = await FindCartWithItemsAsync(userId, cancellationToken);
+        var (cart, _) = await ResolveActiveCartAsync(userId, cancellationToken);
 
-        if (cart is not null && await HasActiveOrderAsync(cart.Id, cancellationToken))
-            return CartErrors.CheckoutInProgress;
-
-        if (cart is null)
-        {
-            cart = new Cart { UserId = userId };
-            dbContext.Carts.Add(cart);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            cart = await FindCartWithItemsAsync(userId, cancellationToken);
-        }
-
-        var existingItem = cart!.Items
+        var existingItem = cart.Items
             .FirstOrDefault(i => i.ProductVariantId == request.ProductVariantId && !i.IsDeleted);
 
         var newQty = existingItem is not null ? existingItem.Qty + request.Qty : request.Qty;
-
         if (newQty > variant.Quantity) return CartErrors.InsufficientStock;
 
         if (existingItem is not null)
@@ -67,34 +47,21 @@ public class CartService(
         {
             cart.Items.Add(new CartItem
             {
-                CartId           = cart.Id,
+                CartId = cart.Id,
                 ProductVariantId = request.ProductVariantId,
-                Qty              = request.Qty,
+                Qty = request.Qty,
             });
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-
-        var updated = await FindCartWithItemsAsync(userId, cancellationToken);
-        var pricing = await ResolvePricingContextAsync(cancellationToken);
-        return MapToResponse(updated!, pricing);
+        return await FinishAsync(userId, cancellationToken);
     }
 
     public async Task<Result<CartResponse>> UpdateItemAsync(long userId, long cartItemId, UpdateCartItemRequest request, CancellationToken cancellationToken = default)
     {
-        var cart = await dbContext.Carts
-            .Where(c => c.UserId == userId && !c.IsDeleted)
-            .Include(c => c.Items.Where(i => !i.IsDeleted))
-                .ThenInclude(i => i.ProductVariant)
-                    .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+        var (cart, _) = await ResolveActiveCartAsync(userId, cancellationToken);
 
-        if (cart is null) return CartErrors.ItemNotFound;
-
-        if (await HasActiveOrderAsync(cart.Id, cancellationToken))
-            return CartErrors.CheckoutInProgress;
-
-        var item = cart.Items.SingleOrDefault(i => i.Id == cartItemId);
+        var item = cart.Items.FirstOrDefault(i => i.Id == cartItemId && !i.IsDeleted);
         if (item is null) return CartErrors.ItemNotFound;
 
         if (request.Qty <= 0)
@@ -108,62 +75,116 @@ public class CartService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        var pricing = await ResolvePricingContextAsync(cancellationToken);
-        return MapToResponse(cart, pricing);
+        return await FinishAsync(userId, cancellationToken);
     }
 
     public async Task<Result<CartResponse>> RemoveItemAsync(long userId, long cartItemId, CancellationToken cancellationToken = default)
     {
-        var cart = await dbContext.Carts
-            .Where(c => c.UserId == userId && !c.IsDeleted)
-            .Include(c => c.Items.Where(i => !i.IsDeleted))
-                .ThenInclude(i => i.ProductVariant)
-                    .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+        var (cart, _) = await ResolveActiveCartAsync(userId, cancellationToken);
 
-        if (cart is null) return CartErrors.ItemNotFound;
-
-        if (await HasActiveOrderAsync(cart.Id, cancellationToken))
-            return CartErrors.CheckoutInProgress;
-
-        var item = cart.Items.SingleOrDefault(i => i.Id == cartItemId);
+        var item = cart.Items.FirstOrDefault(i => i.Id == cartItemId && !i.IsDeleted);
         if (item is null) return CartErrors.ItemNotFound;
 
         item.IsDeleted = true;
+
         await dbContext.SaveChangesAsync(cancellationToken);
-        var pricing = await ResolvePricingContextAsync(cancellationToken);
-        return MapToResponse(cart, pricing);
+        return await FinishAsync(userId, cancellationToken);
     }
 
     public async Task<Result> ClearAsync(long userId, CancellationToken cancellationToken = default)
     {
-        var items = await dbContext.CartItems
-            .Where(i => i.Cart.UserId == userId && !i.IsDeleted)
-            .ToListAsync(cancellationToken);
+        var (cart, order) = await ResolveActiveCartAsync(userId, cancellationToken);
 
-        foreach (var item in items)
+        foreach (var item in cart.Items.Where(i => !i.IsDeleted))
             item.IsDeleted = true;
 
+        await ReSyncDraftOrderAsync(order, cart, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
 
-    private Task<bool> HasActiveOrderAsync(long cartId, CancellationToken cancellationToken) =>
-        dbContext.Orders.AnyAsync(
-            o => o.CartId == cartId &&
-                 o.Status == OrderStatus.New &&
-                 !o.IsDeleted,
-            cancellationToken);
-
-    private async Task<Cart?> FindCartWithItemsAsync(long userId, CancellationToken cancellationToken)
+    // Aktiv cartni topadi: Draft/New order bo'lsa — uning carti (tahrir order'ni re-sync qiladi),
+    // aks holda open shopping cart (get-or-create).
+    private async Task<(Cart cart, Order? order)> ResolveActiveCartAsync(long userId, CancellationToken cancellationToken)
     {
-        return await dbContext.Carts
-            .Where(c => c.UserId == userId && !c.IsDeleted)
+        var order = await dbContext.Orders
+            .Where(o => o.UserId == userId && !o.IsDeleted &&
+                        (o.Status == OrderStatus.Draft || o.Status == OrderStatus.New))
+            .Include(o => o.Items.Where(i => !i.IsDeleted))
+            .Include(o => o.Cart)
+                .ThenInclude(c => c!.Items.Where(i => !i.IsDeleted))
+                    .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v.Product)
+            .Include(o => o.Cart)
+                .ThenInclude(c => c!.Items.Where(i => !i.IsDeleted))
+                    .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v.Measurements)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (order?.Cart is not null)
+            return (order.Cart, order);
+
+        var cart = await LoadOpenCartAsync(userId, cancellationToken);
+        if (cart is null)
+        {
+            cart = new Cart { UserId = userId };
+            dbContext.Carts.Add(cart);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            cart = await LoadOpenCartAsync(userId, cancellationToken);
+        }
+
+        return (cart!, null);
+    }
+
+    private Task<Cart?> LoadOpenCartAsync(long userId, CancellationToken cancellationToken) =>
+        dbContext.Carts
+            .Where(c => c.UserId == userId && !c.IsDeleted && !c.IsCheckedOut)
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
+            .Include(c => c.Items.Where(i => !i.IsDeleted))
+                .ThenInclude(i => i.ProductVariant)
+                    .ThenInclude(v => v.Measurements)
             .OrderBy(c => c.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
+
+    // Mutatsiyadan keyin: cartni qayta yuklab (yangi itemlar bilan), draft order'ni re-sync qiladi va javob qaytaradi.
+    private async Task<Result<CartResponse>> FinishAsync(long userId, CancellationToken cancellationToken)
+    {
+        var (cart, order) = await ResolveActiveCartAsync(userId, cancellationToken);
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+
+        if (order is not null && pricing is not null)
+        {
+            OrderItemSync.Apply(order, cart.Items, pricing);
+            RevertToDraftIfNew(order);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return MapToResponse(cart, pricing);
+    }
+
+    private async Task ReSyncDraftOrderAsync(Order? order, Cart cart, CancellationToken cancellationToken)
+    {
+        if (order is null) return;
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+        if (pricing is null) return;
+
+        OrderItemSync.Apply(order, cart.Items, pricing);
+        RevertToDraftIfNew(order);
+    }
+
+    // To'lov boshlangan (New) order tahrirlansa — eski Hamkor summasi eskirgan → Draft'ga qaytaramiz.
+    private static void RevertToDraftIfNew(Order order)
+    {
+        if (order.Status != OrderStatus.New) return;
+        order.Status = OrderStatus.Draft;
+        order.StatusHistory.Add(new OrderStatusHistory
+        {
+            Status = OrderStatus.Draft,
+            Note = "Reverted to draft after cart edit",
+        });
     }
 
     // USD rate / category rule'lar bo'lmasa savatchada raw narx qoladi (warning bilan)
@@ -178,7 +199,7 @@ public class CartService(
         return null;
     }
 
-    private static CartResponse MapToResponse(Cart cart, PricingContext? pricing, bool isLocked = false)
+    private static CartResponse MapToResponse(Cart cart, PricingContext? pricing)
     {
         var items = cart.Items
             .Where(i => !i.IsDeleted)
@@ -197,6 +218,6 @@ public class CartService(
             .ToList();
 
         var total = items.Sum(i => i.Price * i.Qty);
-        return new CartResponse(cart.Id, items, total, IsLocked: isLocked);
+        return new CartResponse(cart.Id, items, total, IsLocked: false);
     }
 }

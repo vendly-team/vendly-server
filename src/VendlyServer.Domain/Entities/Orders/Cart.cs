@@ -9,6 +9,9 @@ public class Cart : AuditableModelBase<long>
 {
     public long UserId { get; set; }
 
+    // false = open shopping cart; true = attached to an order
+    public bool IsCheckedOut { get; set; }
+
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
 
