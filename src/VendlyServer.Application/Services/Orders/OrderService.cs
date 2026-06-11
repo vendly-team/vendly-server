@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Orders.Contracts;
+using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Application.Services.Shipping;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
@@ -10,7 +11,8 @@ namespace VendlyServer.Application.Services.Orders;
 
 public class OrderService(
     AppDbContext dbContext,
-    IOrderShippingService shippingService) : IOrderService
+    IOrderShippingService shippingService,
+    IProductPricingService pricingService) : IOrderService
 {
     // Mirrors the frontend DELIVERY_COST constant; move to delivery calculation/config later.
     private const decimal DeliveryCost = 10m;
@@ -39,6 +41,11 @@ public class OrderService(
 
         var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
         if (items.Count == 0) return OrderErrors.CartEmpty;
+
+        // Money path — USD rate / category narx mavjud bo'lmasa checkout to'xtaydi (raw fallback YO'Q).
+        var pricingResult = await pricingService.CreateContextAsync(cancellationToken);
+        if (!pricingResult.IsSuccess) return pricingResult.Error;
+        var pricing = pricingResult.Data!;
 
         // Cart ga allaqachon Draft/New order bog'langan bo'lsa — yangisini yaratmasdan davom etamiz.
         if (cart is not null)
@@ -71,6 +78,7 @@ public class OrderService(
                 foreach (var item in items)
                 {
                     var variant = item.ProductVariant;
+                    var unitPrice = pricing.CalculateSoumPrice(variant.Price, variant.Product.CategoryId);
                     activeOrder.Items.Add(new OrderItem
                     {
                         ProductId       = variant.ProductId,
@@ -79,12 +87,13 @@ public class OrderService(
                         ImageSnap       = variant.Images.FirstOrDefault() ?? string.Empty,
                         WeightKgSnap    = variant.Measurements?.WeightKg ?? 0,
                         Qty             = item.Qty,
-                        PriceSnap       = variant.Price,
-                        TotalSnap       = variant.Price * item.Qty,
+                        PriceSnap       = unitPrice,
+                        TotalSnap       = unitPrice * item.Qty,
                     });
                 }
 
-                var newSubtotal         = items.Sum(i => i.ProductVariant.Price * i.Qty);
+                var newSubtotal         = items.Sum(i =>
+                    pricing.CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId) * i.Qty);
                 activeOrder.Subtotal    = newSubtotal;
                 activeOrder.TotalAmount = newSubtotal + DeliveryCost;
 
@@ -93,7 +102,8 @@ public class OrderService(
             }
         }
 
-        var subtotal = items.Sum(i => i.ProductVariant.Price * i.Qty);
+        var subtotal = items.Sum(i =>
+            pricing.CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId) * i.Qty);
         var totalAmount = subtotal + DeliveryCost;
         var orderNumber = GenerateOrderNumber();
 
@@ -118,6 +128,7 @@ public class OrderService(
         foreach (var item in items)
         {
             var variant = item.ProductVariant;
+            var unitPrice = pricing.CalculateSoumPrice(variant.Price, variant.Product.CategoryId);
             order.Items.Add(new OrderItem
             {
                 ProductId = variant.ProductId,
@@ -126,8 +137,8 @@ public class OrderService(
                 ImageSnap = variant.Images.FirstOrDefault() ?? string.Empty,
                 WeightKgSnap = variant.Measurements?.WeightKg ?? 0,
                 Qty = item.Qty,
-                PriceSnap = variant.Price,
-                TotalSnap = variant.Price * item.Qty,
+                PriceSnap = unitPrice,
+                TotalSnap = unitPrice * item.Qty,
             });
         }
 

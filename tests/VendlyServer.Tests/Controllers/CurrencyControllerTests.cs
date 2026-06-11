@@ -41,10 +41,37 @@ public class CurrencyControllerTests
         Assert.IsType<ProblemHttpResult>(result);
     }
 
+    [Fact]
+    public async Task GetUsdRate_Returns200_WhenSuccessful()
+    {
+        _service.GetUsdRateResult = Result<CurrencyRateResponse>.Success(
+            new(12049.44m, 52.23m, "08.06.2026"));
+
+        var result = await CreateController().GetUsdRateAsync();
+
+        var ok = Assert.IsType<Ok<CurrencyRateResponse>>(result);
+        Assert.Equal(12049.44m, ok.Value!.Rate);
+        Assert.Equal(52.23m, ok.Value.Diff);
+        Assert.Equal("08.06.2026", ok.Value.Date);
+    }
+
+    [Fact]
+    public async Task GetUsdRate_ReturnsProblem_WhenServiceFails()
+    {
+        _service.GetUsdRateResult = Result<CurrencyRateResponse>.Failure(CurrencyErrors.ProviderUnavailable);
+
+        var result = await CreateController().GetUsdRateAsync();
+
+        Assert.IsType<ProblemHttpResult>(result);
+    }
+
     private sealed class FakeCurrencyConverterService : ICurrencyConverterService
     {
         public Result<CurrencyConversionResponse> ConvertResult { get; set; } =
             Result<CurrencyConversionResponse>.Failure(CurrencyErrors.ProviderUnavailable);
+
+        public Result<CurrencyRateResponse> GetUsdRateResult { get; set; } =
+            Result<CurrencyRateResponse>.Failure(CurrencyErrors.ProviderUnavailable);
 
         public Task<Result<CurrencyConversionResponse>> ConvertAsync(
             string fromCurrency,
@@ -53,6 +80,11 @@ public class CurrencyControllerTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(ConvertResult);
+        }
+
+        public Task<Result<CurrencyRateResponse>> GetUsdRateAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(GetUsdRateResult);
         }
     }
 }

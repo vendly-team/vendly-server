@@ -10,4 +10,6 @@ public interface ICurrencyConverterService
         string toCurrency,
         decimal amount,
         CancellationToken cancellationToken = default);
+
+    Task<Result<CurrencyRateResponse>> GetUsdRateAsync(CancellationToken cancellationToken = default);
 }

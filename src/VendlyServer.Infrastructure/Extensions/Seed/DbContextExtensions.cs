@@ -4,6 +4,7 @@ using VendlyServer.Domain.Entities.Public;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Infrastructure.Authentication;
 using VendlyServer.Infrastructure.Persistence;
+using VendlyServer.Domain.Entities.Orders;
 
 namespace VendlyServer.Infrastructure.Extensions.Seed;
 
@@ -17,6 +18,7 @@ public static class DbContextExtensions
 
             await dbContext.SeedUsersAsync(passwordHasher);
             await dbContext.SeedBtsRefAsync();
+            await dbContext.SeedReturnReasonsAsync();
 
             if (isDevelopment)
                 await dbContext.SeedCatalogAsync();
@@ -59,6 +61,23 @@ public static class DbContextExtensions
             };
 
             dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
+        }
+
+        private async Task SeedReturnReasonsAsync()
+        {
+            var existingKeys = await dbContext.ReturnReasons
+                .Where(r => !r.IsDeleted)
+                .Select(r => r.Key)
+                .ToListAsync();
+
+            var toInsert = ReturnReasonSeedData.All()
+                .Where(r => !existingKeys.Contains(r.Key))
+                .ToList();
+
+            if (toInsert.Count == 0) return;
+
+            dbContext.ReturnReasons.AddRange(toInsert);
             await dbContext.SaveChangesAsync();
         }
 

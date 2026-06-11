@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     #region Catalog
 
     public DbSet<Category> Categories { get; set; }
+    public DbSet<CategoryPrice> CategoryPrices { get; set; }
     public DbSet<Discount> Discounts { get; set; }
     public DbSet<DiscountProduct> DiscountProducts { get; set; }
     public DbSet<Product> Products { get; set; }
@@ -41,6 +42,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderCancellation> OrderCancellations { get; set; }
     public DbSet<OrderReturn> OrderReturns { get; set; }
     public DbSet<OrderReturnItem> OrderReturnItems { get; set; }
+    public DbSet<ReturnReason> ReturnReasons { get; set; }
 
     // ref
     public DbSet<BtsRegionRef> BtsRegions { get; set; }
@@ -50,6 +52,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<BtsPostTypeRef> BtsPostTypes { get; set; }
     public DbSet<Address> Addresses { get; set; }
     
+    public DbSet<Faq> Faqs { get; set; }
+    public DbSet<CompanyInfo> CompanyInfos { get; set; }
+
     public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
     public DbSet<NotificationLog> NotificationLogs { get; set; }
     public DbSet<SyncLog> SyncLogs { get; set; }
@@ -142,11 +147,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             modelBuilder.Entity<Category>().OwnsOne(c => c.Name, nav => nav.ToJson());
             modelBuilder.Entity<Product>().OwnsOne(p => p.Name, nav => nav.ToJson());
+            modelBuilder.Entity<ReturnReason>().OwnsOne(r => r.Name, nav => nav.ToJson());
+            modelBuilder.Entity<ReturnReason>().OwnsOne(r => r.Description, nav => nav.ToJson());
+            modelBuilder.Entity<Faq>().OwnsOne(f => f.Question, nav => nav.ToJson());
+            modelBuilder.Entity<Faq>().OwnsOne(f => f.Answer, nav => nav.ToJson());
+            modelBuilder.Entity<CompanyInfo>().OwnsOne(c => c.OfertaUrl, nav => nav.ToJson());
         }
         else
         {
             modelBuilder.Entity<Category>().OwnsOne(c => c.Name);
             modelBuilder.Entity<Product>().OwnsOne(p => p.Name);
+            modelBuilder.Entity<ReturnReason>().OwnsOne(r => r.Name);
+            modelBuilder.Entity<ReturnReason>().OwnsOne(r => r.Description);
+            modelBuilder.Entity<Faq>().OwnsOne(f => f.Question);
+            modelBuilder.Entity<Faq>().OwnsOne(f => f.Answer);
+            modelBuilder.Entity<CompanyInfo>().OwnsOne(c => c.OfertaUrl);
         }
 
         // === JSONB column types ===

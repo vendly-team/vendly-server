@@ -22,4 +22,5 @@ public class Category : AuditableModelBase<long>
 
     public ICollection<Product> Products { get; set; } = [];
     public ICollection<Discount> Discounts { get; set; } = [];
+    public ICollection<CategoryPrice> Prices { get; set; } = [];
 }
