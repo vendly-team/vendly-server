@@ -26,14 +26,50 @@ public class OrderService(
 
         if (address is null) return OrderErrors.AddressNotFound;
 
-        // Bir vaqtda faqat bitta to'lanmagan (Draft/New) order — yangisini yaratish uchun
-        // avvalgisi kamida Payed bo'lishi kerak.
-        var hasUnpaidOrder = await dbContext.Orders.AnyAsync(
-            o => o.UserId == userId && !o.IsDeleted &&
-                 (o.Status == OrderStatus.Draft || o.Status == OrderStatus.New),
-            cancellationToken);
+        // Money path — USD rate / category narx mavjud bo'lmasa checkout to'xtaydi (raw fallback YO'Q).
+        var pricingResult = await pricingService.CreateContextAsync(cancellationToken);
+        if (!pricingResult.IsSuccess) return pricingResult.Error;
+        var pricing = pricingResult.Data!;
 
-        if (hasUnpaidOrder) return OrderErrors.ActiveOrderExists;
+        // Bir vaqtda faqat bitta to'lanmagan (Draft/New) order bo'ladi. Yangisini YARATMAYMIZ —
+        // mavjudini davom ettiramiz: addressni yangilab, o'z cartidan re-sync qilamiz, o'shani qaytaramiz.
+        var existing = await dbContext.Orders
+            .Where(o => o.UserId == userId && !o.IsDeleted &&
+                        (o.Status == OrderStatus.Draft || o.Status == OrderStatus.New))
+            .Include(o => o.Items.Where(i => !i.IsDeleted))
+            .Include(o => o.Cart)
+                .ThenInclude(c => c!.Items.Where(i => !i.IsDeleted))
+                    .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v.Product)
+            .Include(o => o.Cart)
+                .ThenInclude(c => c!.Items.Where(i => !i.IsDeleted))
+                    .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v.Measurements)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existing is not null)
+        {
+            var existingItems = existing.Cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
+            if (existingItems.Count == 0) return OrderErrors.CartEmpty;
+
+            ApplyAddress(existing, address);
+            OrderItemSync.Apply(existing, existingItems, pricing);
+
+            // To'lov boshlangan (New) bo'lsa — address/itemlar o'zgardi → eski Hamkor summasi eskirdi → Draft.
+            if (existing.Status == OrderStatus.New)
+            {
+                existing.Status = OrderStatus.Draft;
+                existing.StatusHistory.Add(new OrderStatusHistory
+                {
+                    Status = OrderStatus.Draft,
+                    Note = "Reverted to draft on checkout resume",
+                });
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return new CreateOrderResponse(existing.Id, existing.OrderNumber);
+        }
 
         // Open cart (hali orderga biriktirilmagan)
         var cart = await dbContext.Carts
@@ -49,11 +85,6 @@ public class OrderService(
 
         var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
         if (cart is null || items.Count == 0) return OrderErrors.CartEmpty;
-
-        // Money path — USD rate / category narx mavjud bo'lmasa checkout to'xtaydi (raw fallback YO'Q).
-        var pricingResult = await pricingService.CreateContextAsync(cancellationToken);
-        if (!pricingResult.IsSuccess) return pricingResult.Error;
-        var pricing = pricingResult.Data!;
 
         var order = new Order
         {
@@ -357,6 +388,16 @@ public class OrderService(
 
     private static string GenerateOrderNumber() =>
         $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+
+    private static void ApplyAddress(Order order, Domain.Entities.Ref.Address address)
+    {
+        order.DeliveryCity = address.City;
+        order.DeliveryDistrict = address.District;
+        order.DeliveryStreet = address.Street;
+        order.DeliveryHouse = address.House;
+        order.DeliveryExtra = address.Extra;
+        order.DeliveryBtsCityCode = address.BtsCityCode;
+    }
 
     private IQueryable<Order> QueryDetail() =>
         dbContext.Orders
