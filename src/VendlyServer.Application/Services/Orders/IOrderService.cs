@@ -5,7 +5,13 @@ namespace VendlyServer.Application.Services.Orders;
 
 public interface IOrderService
 {
-    // Customer
+    // Customer — checkout flow
+    Task<Result<CreateOrderResponse>> CreateDraftAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default);
+    Task<Result> SetAddressAsync(long userId, long id, SetOrderAddressRequest request, CancellationToken cancellationToken = default);
+    Task<Result<CreateOrderResponse>> GetMyDraftAsync(long userId, CancellationToken cancellationToken = default);
+    Task<Result> CancelMyDraftAsync(long userId, CancellationToken cancellationToken = default);
+
+    // Customer — read
     Task<Result<List<OrderListItemResponse>>> GetMyOrdersAsync(long userId, OrderFilterRequest filter, CancellationToken cancellationToken = default);
     Task<Result<OrderResponse>> GetMyByIdAsync(long userId, long id, CancellationToken cancellationToken = default);
 

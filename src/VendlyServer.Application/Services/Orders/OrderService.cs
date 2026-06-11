@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Orders.Contracts;
+using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Application.Services.Shipping;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
@@ -10,9 +11,226 @@ namespace VendlyServer.Application.Services.Orders;
 
 public class OrderService(
     AppDbContext dbContext,
-    IOrderShippingService shippingService) : IOrderService
+    IOrderShippingService shippingService,
+    IProductPricingService pricingService) : IOrderService
 {
-    // ── Customer ──────────────────────────────────────────────────────────────
+    // Mirrors the frontend DELIVERY_COST constant; move to delivery calculation/config later.
+    private const decimal DeliveryCost = 10m;
+
+    // ── Customer — checkout flow ──────────────────────────────────────────────
+
+    public async Task<Result<CreateOrderResponse>> CreateDraftAsync(
+        long userId, CreateOrderRequest request, CancellationToken cancellationToken = default)
+    {
+        var address = await dbContext.Addresses
+            .AsNoTracking()
+            .Where(a => a.Id == request.AddressId && a.UserId == userId && !a.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (address is null) return OrderErrors.AddressNotFound;
+
+        var cart = await dbContext.Carts
+            .Where(c => c.UserId == userId && !c.IsDeleted)
+            .Include(c => c.Items.Where(i => !i.IsDeleted))
+                .ThenInclude(i => i.ProductVariant)
+                    .ThenInclude(v => v.Product)
+            .Include(c => c.Items.Where(i => !i.IsDeleted))
+                .ThenInclude(i => i.ProductVariant)
+                    .ThenInclude(v => v.Measurements)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
+        if (items.Count == 0) return OrderErrors.CartEmpty;
+
+        // Money path — USD rate / category narx mavjud bo'lmasa checkout to'xtaydi (raw fallback YO'Q).
+        var pricingResult = await pricingService.CreateContextAsync(cancellationToken);
+        if (!pricingResult.IsSuccess) return pricingResult.Error;
+        var pricing = pricingResult.Data!;
+
+        // Cart ga allaqachon Draft/New order bog'langan bo'lsa — yangisini yaratmasdan davom etamiz.
+        if (cart is not null)
+        {
+            var existing = await dbContext.Orders
+                .Where(o => o.CartId == cart.Id &&
+                            (o.Status == OrderStatus.Draft || o.Status == OrderStatus.New) &&
+                            !o.IsDeleted)
+                .Select(o => new { o.Id, o.OrderNumber })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (existing is not null)
+            {
+                var activeOrder = await dbContext.Orders
+                    .Where(o => o.Id == existing.Id)
+                    .Include(o => o.Items.Where(i => !i.IsDeleted))
+                    .SingleAsync(cancellationToken);
+
+                activeOrder.DeliveryCity        = address.City;
+                activeOrder.DeliveryDistrict    = address.District;
+                activeOrder.DeliveryStreet      = address.Street;
+                activeOrder.DeliveryHouse       = address.House;
+                activeOrder.DeliveryExtra       = address.Extra;
+                activeOrder.DeliveryBtsCityCode = address.BtsCityCode;
+
+                // Cart da o'zgargan itemlarni orderga sync qilamiz
+                foreach (var oi in activeOrder.Items)
+                    oi.IsDeleted = true;
+
+                foreach (var item in items)
+                {
+                    var variant = item.ProductVariant;
+                    var unitPrice = pricing.CalculateSoumPrice(variant.Price, variant.Product.CategoryId);
+                    activeOrder.Items.Add(new OrderItem
+                    {
+                        ProductId       = variant.ProductId,
+                        ProductNameSnap = variant.Product.Name.Uz ?? variant.Product.Name.Ru ?? string.Empty,
+                        SkuSnap         = string.IsNullOrWhiteSpace(variant.Name) ? $"VAR-{variant.Id}" : variant.Name,
+                        ImageSnap       = variant.Images.FirstOrDefault() ?? string.Empty,
+                        WeightKgSnap    = variant.Measurements?.WeightKg ?? 0,
+                        Qty             = item.Qty,
+                        PriceSnap       = unitPrice,
+                        TotalSnap       = unitPrice * item.Qty,
+                    });
+                }
+
+                var newSubtotal         = items.Sum(i =>
+                    pricing.CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId) * i.Qty);
+                activeOrder.Subtotal    = newSubtotal;
+                activeOrder.TotalAmount = newSubtotal + DeliveryCost;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return new CreateOrderResponse(existing.Id, existing.OrderNumber);
+            }
+        }
+
+        var subtotal = items.Sum(i =>
+            pricing.CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId) * i.Qty);
+        var totalAmount = subtotal + DeliveryCost;
+        var orderNumber = GenerateOrderNumber();
+
+        var order = new Order
+        {
+            UserId = userId,
+            OrderNumber = orderNumber,
+            Status = OrderStatus.Draft,
+            CartId = cart?.Id,
+            Subtotal = subtotal,
+            DeliveryCost = DeliveryCost,
+            DiscountAmount = 0,
+            TotalAmount = totalAmount,
+            DeliveryCity = address.City,
+            DeliveryDistrict = address.District,
+            DeliveryStreet = address.Street,
+            DeliveryHouse = address.House,
+            DeliveryExtra = address.Extra,
+            DeliveryBtsCityCode = address.BtsCityCode,
+        };
+
+        foreach (var item in items)
+        {
+            var variant = item.ProductVariant;
+            var unitPrice = pricing.CalculateSoumPrice(variant.Price, variant.Product.CategoryId);
+            order.Items.Add(new OrderItem
+            {
+                ProductId = variant.ProductId,
+                ProductNameSnap = variant.Product.Name.Uz ?? variant.Product.Name.Ru ?? string.Empty,
+                SkuSnap = string.IsNullOrWhiteSpace(variant.Name) ? $"VAR-{variant.Id}" : variant.Name,
+                ImageSnap = variant.Images.FirstOrDefault() ?? string.Empty,
+                WeightKgSnap = variant.Measurements?.WeightKg ?? 0,
+                Qty = item.Qty,
+                PriceSnap = unitPrice,
+                TotalSnap = unitPrice * item.Qty,
+            });
+        }
+
+        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Draft });
+
+        dbContext.Orders.Add(order);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new CreateOrderResponse(order.Id, order.OrderNumber);
+    }
+
+    public async Task<Result<CreateOrderResponse>> GetMyDraftAsync(
+        long userId, CancellationToken cancellationToken = default)
+    {
+        var cart = await dbContext.Carts
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && !c.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (cart is null) return OrderErrors.NotFound;
+
+        var existing = await dbContext.Orders
+            .AsNoTracking()
+            .Where(o => o.CartId == cart.Id &&
+                        (o.Status == OrderStatus.Draft || o.Status == OrderStatus.New) &&
+                        !o.IsDeleted)
+            .Select(o => new { o.Id, o.OrderNumber })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return existing is null
+            ? OrderErrors.NotFound
+            : new CreateOrderResponse(existing.Id, existing.OrderNumber);
+    }
+
+    public async Task<Result> CancelMyDraftAsync(
+        long userId, CancellationToken cancellationToken = default)
+    {
+        var cart = await dbContext.Carts
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && !c.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (cart is null) return OrderErrors.NotFound;
+
+        var order = await dbContext.Orders
+            .Where(o => o.CartId == cart.Id &&
+                        o.Status == OrderStatus.Draft &&
+                        !o.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (order is null) return OrderErrors.NotFound;
+
+        order.Status = OrderStatus.Cancelled;
+        order.StatusHistory.Add(new OrderStatusHistory
+        {
+            Status = OrderStatus.Cancelled,
+            Note = "Cancelled by customer",
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    public async Task<Result> SetAddressAsync(
+        long userId, long id, SetOrderAddressRequest request, CancellationToken cancellationToken = default)
+    {
+        var address = await dbContext.Addresses
+            .AsNoTracking()
+            .Where(a => a.Id == request.AddressId && a.UserId == userId && !a.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (address is null) return OrderErrors.AddressNotFound;
+
+        var order = await dbContext.Orders
+            .Where(o => o.Id == id && o.UserId == userId && !o.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (order is null) return OrderErrors.NotFound;
+        if (order.Status != OrderStatus.Draft) return OrderErrors.NotDraft;
+
+        order.DeliveryCity = address.City;
+        order.DeliveryDistrict = address.District;
+        order.DeliveryStreet = address.Street;
+        order.DeliveryHouse = address.House;
+        order.DeliveryExtra = address.Extra;
+        order.DeliveryBtsCityCode = address.BtsCityCode;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    // ── Customer — read ───────────────────────────────────────────────────────
 
     public async Task<Result<List<OrderListItemResponse>>> GetMyOrdersAsync(
         long userId, OrderFilterRequest filter, CancellationToken cancellationToken = default)
@@ -214,6 +432,9 @@ public class OrderService(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private static string GenerateOrderNumber() =>
+        $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+
     private IQueryable<Order> QueryDetail() =>
         dbContext.Orders
             .AsNoTracking()
@@ -238,8 +459,15 @@ public class OrderService(
             order.Status.ToString(),
             (order.Payment?.Status ?? PaymentStatus.Pending).ToString(),
             order.DeliveryStatus.ToString(),
+            order.Subtotal,
+            order.DeliveryCost,
             order.TotalAmount,
             order.Items.Count(i => !i.IsDeleted),
+            order.DeliveryCity,
+            order.Items
+                .Where(i => !i.IsDeleted)
+                .Select(i => new OrderItemResponse(i.Id, i.ProductId, i.ProductNameSnap, i.SkuSnap, i.ImageSnap, i.Qty, i.PriceSnap, i.TotalSnap))
+                .ToList(),
             includeCustomer && order.User is not null ? $"{order.User.FirstName} {order.User.LastName}".Trim() : null,
             order.CreatedAt);
 

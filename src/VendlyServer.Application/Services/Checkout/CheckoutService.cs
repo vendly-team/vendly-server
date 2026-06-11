@@ -19,106 +19,43 @@ public class CheckoutService(
     IOptions<HamkorOptions> hamkorOptions,
     ILogger<CheckoutService> logger) : ICheckoutService
 {
-    // Mirrors the frontend DELIVERY_COST constant; move to delivery calculation/config later.
-    private const decimal DeliveryCost = 10m;
-
     private readonly ClientOptions _client = clientOptions.Value;
     private readonly HamkorOptions _hamkor = hamkorOptions.Value;
 
-    public async Task<Result<CheckoutResponse>> CreateAsync(
-        long userId, CreateCheckoutRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<CheckoutResponse>> InitiatePaymentAsync(
+        long userId, long orderId, CancellationToken cancellationToken = default)
     {
-        var address = await dbContext.Addresses
-            .AsNoTracking()
-            .Where(a => a.Id == request.AddressId && a.UserId == userId && !a.IsDeleted)
+        var order = await dbContext.Orders
+            .Include(o => o.Items.Where(i => !i.IsDeleted))
+            .Where(o => o.Id == orderId && o.UserId == userId && !o.IsDeleted)
             .SingleOrDefaultAsync(cancellationToken);
 
-        if (address is null) return CheckoutErrors.AddressNotFound;
-
-        var cart = await dbContext.Carts
-            .Where(c => c.UserId == userId && !c.IsDeleted)
-            .Include(c => c.Items.Where(i => !i.IsDeleted))
-                .ThenInclude(i => i.ProductVariant)
-                    .ThenInclude(v => v.Product)
-            .Include(c => c.Items.Where(i => !i.IsDeleted))
-                .ThenInclude(i => i.ProductVariant)
-                    .ThenInclude(v => v.Measurements)
-            .SingleOrDefaultAsync(cancellationToken);
-
-        var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
-        if (items.Count == 0) return CheckoutErrors.CartEmpty;
-
-        var subtotal = items.Sum(i => i.ProductVariant.Price * i.Qty);
-        var totalAmount = subtotal + DeliveryCost;
-
-        var orderNumber = GenerateOrderNumber();
-
-        var order = new Order
-        {
-            UserId = userId,
-            OrderNumber = orderNumber,
-            Status = OrderStatus.New,
-            Subtotal = subtotal,
-            DeliveryCost = DeliveryCost,
-            DiscountAmount = 0,
-            TotalAmount = totalAmount,
-            DeliveryCity = address.City,
-            DeliveryDistrict = address.District,
-            DeliveryStreet = address.Street,
-            DeliveryHouse = address.House,
-            DeliveryExtra = address.Extra,
-            DeliveryBtsCityCode = address.BtsCityCode,
-            Payment = new Payment
-            {
-                Provider = PaymentProvider.Hamkor,
-                Status = PaymentStatus.Pending,
-                Amount = totalAmount
-            }
-        };
-
-        foreach (var item in items)
-        {
-            var variant = item.ProductVariant;
-            order.Items.Add(new OrderItem
-            {
-                ProductId = variant.ProductId,
-                ProductNameSnap = variant.Product.Name,
-                SkuSnap = string.IsNullOrWhiteSpace(variant.Name) ? $"VAR-{variant.Id}" : variant.Name,
-                ImageSnap = variant.Images.FirstOrDefault() ?? string.Empty,
-                WeightKgSnap = variant.Measurements?.WeightKg ?? 0,
-                Qty = item.Qty,
-                PriceSnap = variant.Price,
-                TotalSnap = variant.Price * item.Qty
-            });
-        }
-
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.New });
-
-        dbContext.Orders.Add(order);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (order is null) return CheckoutErrors.OrderNotFound;
+        if (order.Status != OrderStatus.Draft) return CheckoutErrors.NotDraft;
 
         var clientBase = _client.BaseUrl.TrimEnd('/');
-        var successUrl = $"{clientBase}/payment/success?order={orderNumber}";
-        var failureUrl = $"{clientBase}/payment/fail?order={orderNumber}";
+        var successUrl = $"{clientBase}/payment/success?order={order.OrderNumber}";
+        var failureUrl = $"{clientBase}/payment/fail?order={order.OrderNumber}";
         var callbackUrl = $"{_hamkor.CallbackBaseUrl.TrimEnd('/')}/api/hamkor/webhook";
 
         // Hamkor expects the amount in tiyin (smallest currency unit) = so'm * 100.
-        var amountMinorUnits = (long)Math.Round(totalAmount * 100m, MidpointRounding.AwayFromZero);
+        var amountMinorUnits = (long)Math.Round(order.TotalAmount * 100m, MidpointRounding.AwayFromZero);
 
-        // Build fiscal lines for each cart item plus delivery; line amount is total (price * qty).
-        var fiscalItems = items
+        // Build fiscal lines for each order item plus delivery; line amount is total (price * qty).
+        var fiscalItems = order.Items
+            .Where(i => !i.IsDeleted)
             .Select(i => new HamkorCreatePaymentItem(
-                AmountMinorUnits: (long)Math.Round(i.ProductVariant.Price * i.Qty * 100m, MidpointRounding.AwayFromZero),
+                AmountMinorUnits: (long)Math.Round(i.PriceSnap * i.Qty * 100m, MidpointRounding.AwayFromZero),
                 Qty: i.Qty))
             .Append(new HamkorCreatePaymentItem(
-                AmountMinorUnits: (long)Math.Round(DeliveryCost * 100m, MidpointRounding.AwayFromZero),
+                AmountMinorUnits: (long)Math.Round(order.DeliveryCost * 100m, MidpointRounding.AwayFromZero),
                 Qty: 1))
             .ToList();
 
         var urlResult = await hamkorBroker.CreatePaymentUrlAsync(
             new HamkorCreatePaymentUrlRequest
             {
-                ExternalId = orderNumber,
+                ExternalId = order.OrderNumber,
                 AmountMinorUnits = amountMinorUnits,
                 SuccessUrl = successUrl,
                 FailureUrl = failureUrl,
@@ -129,11 +66,22 @@ public class CheckoutService(
 
         if (urlResult.IsFailure)
         {
-            logger.LogError("Checkout: failed to create payment url for order {OrderNumber}", orderNumber);
+            logger.LogError("Checkout: failed to initiate payment for order {OrderNumber}", order.OrderNumber);
             return CheckoutErrors.PaymentUrlFailed;
         }
 
-        return new CheckoutResponse(urlResult.Data!, orderNumber);
+        order.Status = OrderStatus.New;
+        order.Payment = new Payment
+        {
+            Provider = PaymentProvider.Hamkor,
+            Status = PaymentStatus.Pending,
+            Amount = order.TotalAmount,
+        };
+        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.New });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new CheckoutResponse(urlResult.Data!, order.OrderNumber);
     }
 
     public async Task<Result> HandleCallbackAsync(
@@ -217,7 +165,4 @@ public class CheckoutService(
         foreach (var item in cartItems)
             item.IsDeleted = true;
     }
-
-    private static string GenerateOrderNumber() =>
-        $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
 }

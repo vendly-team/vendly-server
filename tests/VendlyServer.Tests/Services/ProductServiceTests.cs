@@ -8,6 +8,7 @@ using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Infrastructure.Persistence;
 
@@ -29,19 +30,20 @@ public class ProductServiceTests : IDisposable
             _db,
             new StubStorageService(),
             NullLogger<ProductService>.Instance,
+            new StubPricingService(),
             Options.Create(new ClientOptions { BaseUrl = "https://client.example.com" }));
 
         // Seed category
         _db.Categories.AddRange(
-            new Category { Id = 1, Name = "Electronics", IsActive = true },
-            new Category { Id = 2, Name = "Clothing",    IsActive = true }
+            new Category { Id = 1, Name = new MultiLanguageField { Uz = "Electronics", Ru = "Electronics" }, IsActive = true },
+            new Category { Id = 2, Name = new MultiLanguageField { Uz = "Clothing",    Ru = "Clothing"    }, IsActive = true }
         );
 
         // Seed products
         _db.Products.AddRange(
-            new Product { Id = 1, CategoryId = 1, Name = "Phone",   IsActive = true,  SyncSource = SyncSource.Manual  },
-            new Product { Id = 2, CategoryId = 1, Name = "Tablet",  IsActive = false, SyncSource = SyncSource.External },
-            new Product { Id = 3, CategoryId = 2, Name = "Deleted", IsActive = true,  SyncSource = SyncSource.Manual, IsDeleted = true }
+            new Product { Id = 1, CategoryId = 1, Name = new MultiLanguageField { Uz = "Phone",   Ru = "Phone"   }, IsActive = true,  SyncSource = SyncSource.Manual   },
+            new Product { Id = 2, CategoryId = 1, Name = new MultiLanguageField { Uz = "Tablet",  Ru = "Tablet"  }, IsActive = false, SyncSource = SyncSource.External },
+            new Product { Id = 3, CategoryId = 2, Name = new MultiLanguageField { Uz = "Deleted", Ru = "Deleted" }, IsActive = true,  SyncSource = SyncSource.Manual, IsDeleted = true }
         );
 
         // Seed variant types for product 1
@@ -78,7 +80,7 @@ public class ProductServiceTests : IDisposable
     {
         var result = await _service.GetAllAsync(new ProductFilterRequest());
 
-        Assert.DoesNotContain(result.Items, p => p.Name == "Deleted");
+        Assert.DoesNotContain(result.Items, p => p.Name.Uz == "Deleted");
     }
 
     [Fact]
@@ -86,7 +88,7 @@ public class ProductServiceTests : IDisposable
     {
         var result = await _service.GetAllAsync(new ProductFilterRequest());
 
-        Assert.All(result.Items, p => Assert.NotEmpty(p.CategoryName));
+        Assert.All(result.Items, p => Assert.False(string.IsNullOrEmpty(p.CategoryName.Uz)));
     }
 
     [Fact(Skip = "InMemory EF cannot translate SelectMany on JSON column (Images)")]
@@ -96,7 +98,7 @@ public class ProductServiceTests : IDisposable
 
         Assert.True(result.IsSuccess);
         var item = Assert.Single(result.Data!);
-        Assert.Equal("Phone", item.Name);
+        Assert.Equal("Phone", item.Name.Uz);
         Assert.Equal(99.99m, item.Price);
         Assert.Equal(1, item.SkuCount);
         Assert.True(item.IsAvailableForSale);
@@ -121,8 +123,8 @@ public class ProductServiceTests : IDisposable
         var result = await _service.GetByIdAsync(1);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("Phone", result.Data!.Name);
-        Assert.Equal("Electronics", result.Data.CategoryName);
+        Assert.Equal("Phone", result.Data!.Name.Uz);
+        Assert.Equal("Electronics", result.Data.CategoryName.Uz);
     }
 
     [Fact]
@@ -148,13 +150,13 @@ public class ProductServiceTests : IDisposable
     [Fact]
     public async Task Create_ReturnsNewProductId()
     {
-        var result = await _service.CreateAsync(new CreateProductRequest(1, "Headphones", null));
+        var result = await _service.CreateAsync(new CreateProductRequest(1, new MultiLanguageField { Uz = "Headphones", Ru = "Headphones" }, null));
 
         Assert.True(result.IsSuccess);
         Assert.True(result.Data > 0);
         var saved = await _db.Products.FindAsync(result.Data);
         Assert.NotNull(saved);
-        Assert.Equal("Headphones", saved.Name);
+        Assert.Equal("Headphones", saved.Name.Uz);
         Assert.True(saved.IsActive);
     }
 
@@ -163,11 +165,11 @@ public class ProductServiceTests : IDisposable
     [Fact]
     public async Task Update_UpdatesProduct_WhenFound()
     {
-        var result = await _service.UpdateAsync(1, new UpdateProductRequest(2, "Phone Updated", "desc", false, SyncSource.Manual));
+        var result = await _service.UpdateAsync(1, new UpdateProductRequest(2, new MultiLanguageField { Uz = "Phone Updated", Ru = "Phone Updated" }, "desc", false, SyncSource.Manual));
 
         Assert.True(result.IsSuccess);
         var updated = await _db.Products.FindAsync(1L);
-        Assert.Equal("Phone Updated", updated!.Name);
+        Assert.Equal("Phone Updated", updated!.Name.Uz);
         Assert.Equal(2, updated.CategoryId);
         Assert.False(updated.IsActive);
     }
@@ -175,7 +177,7 @@ public class ProductServiceTests : IDisposable
     [Fact]
     public async Task Update_ReturnsNotFound_WhenMissing()
     {
-        var result = await _service.UpdateAsync(999, new UpdateProductRequest(1, "X", null, true, SyncSource.Manual));
+        var result = await _service.UpdateAsync(999, new UpdateProductRequest(1, new MultiLanguageField { Uz = "X" }, null, true, SyncSource.Manual));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ProductErrors.NotFound, result.Error);

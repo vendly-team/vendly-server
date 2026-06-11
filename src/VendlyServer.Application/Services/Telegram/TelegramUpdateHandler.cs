@@ -260,7 +260,7 @@ public sealed class TelegramUpdateHandler(
         {
             ["type"] = "article",
             ["id"] = product.Id.ToString(CultureInfo.InvariantCulture),
-            ["title"] = $"🛍️ {product.Name}",
+            ["title"] = $"🛍️ {product.Name.Uz ?? product.Name.Ru}",
             ["description"] = BuildDescription(product),
             ["input_message_content"] = new TelegramInputTextMessageContent
             {
@@ -297,7 +297,7 @@ public sealed class TelegramUpdateHandler(
             : $"<a href=\"{EscapeHtml(imageUrl)}\">&#8205;</a>\n";
 
         return $"""
-                {imagePreviewLink}🛍️ <b>{EscapeHtml(product.Name)}</b>
+                {imagePreviewLink}🛍️ <b>{EscapeHtml(product.Name.Uz ?? product.Name.Ru ?? string.Empty)}</b>
 
                 💰 Narxi: {FormatPrice(product.Price)} so'm
                 📦 Variantlar: {product.SkuCount} ta

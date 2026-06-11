@@ -11,4 +11,8 @@ public static class OrderErrors
     public static readonly Error NotCancellable = Error.Conflict("Order.NotCancellable");
     public static readonly Error ShippingFailed = Error.Failure("Order.ShippingFailed");
     public static readonly Error StickerNotAvailable = Error.NotFound("Order.StickerNotAvailable");
+    public static readonly Error CartEmpty = Error.Validation("Order.CartEmpty", "Cart is empty.");
+    public static readonly Error AddressNotFound = Error.NotFound("Order.AddressNotFound");
+    public static readonly Error NotDraft = Error.Validation("Order.NotDraft", "Order is not in draft status.");
+    public static readonly Error PaymentFailed = Error.Failure("Order.PaymentFailed");
 }

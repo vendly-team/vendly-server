@@ -1,8 +1,10 @@
+using VendlyServer.Domain.Entities.Common;
+
 namespace VendlyServer.Application.Services.Categories.Contracts;
 
 public record CategoryResponse(
     long Id,
-    string Name,
+    MultiLanguageField Name,
     string? Slug,
     string? ImageUrl,
     bool IsActive,

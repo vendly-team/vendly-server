@@ -17,12 +17,17 @@ using VendlyServer.Application.Services.Wishlists;
 using VendlyServer.Application.Services.Currencies;
 using VendlyServer.Application.Services.Addresses;
 using VendlyServer.Application.Services.Categories;
+using VendlyServer.Application.Services.CategoryPrices;
+using VendlyServer.Application.Services.CompanyInfo;
+using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Application.Services.Carts;
 using VendlyServer.Application.Services.Checkout;
 using VendlyServer.Application.Services.Orders;
 using VendlyServer.Application.Services.Shipping;
 using VendlyServer.Application.Services.Analytics;
 using VendlyServer.Application.Services.SyncLogs;
+using VendlyServer.Application.Services.ReturnReasons;
+using VendlyServer.Application.Services.Faqs;
 
 namespace VendlyServer.Application;
 
@@ -31,6 +36,7 @@ public static class Dependencies
     public static IServiceCollection ConfigureApplication(this IServiceCollection services)
     {
         services.ConfigureOptions<ClientOptionsSetup>();
+        services.ConfigureOptions<PricingOptionsSetup>();
         services.ConfigureStorage();
         services.ConfigureCurrency();
         services.ConfigureTelegram();
@@ -43,6 +49,9 @@ public static class Dependencies
         services.AddScoped<IWishlistService, WishlistService>();
         services.AddScoped<IRecentlyViewedService, RecentlyViewedService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<ICategoryPriceService, CategoryPriceService>();
+        services.AddScoped<IProductPricingService, ProductPricingService>();
+        services.AddScoped<ICompanyInfoService, CompanyInfoService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICartService, CartService>();
@@ -52,6 +61,8 @@ public static class Dependencies
         services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         services.AddScoped<ISyncLogService, SyncLogService>();
+        services.AddScoped<IReturnReasonService, ReturnReasonService>();
+        services.AddScoped<IFaqService, FaqService>();
 
         services.AddScoped<IBtsCatalogSyncJob, BtsCatalogSyncJob>();
         services.AddScoped<ICleanExpiredRefreshTokensJob, CleanExpiredRefreshTokensJob>();

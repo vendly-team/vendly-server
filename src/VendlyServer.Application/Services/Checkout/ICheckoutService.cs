@@ -5,7 +5,7 @@ namespace VendlyServer.Application.Services.Checkout;
 
 public interface ICheckoutService
 {
-    Task<Result<CheckoutResponse>> CreateAsync(long userId, CreateCheckoutRequest request, CancellationToken cancellationToken = default);
+    Task<Result<CheckoutResponse>> InitiatePaymentAsync(long userId, long orderId, CancellationToken cancellationToken = default);
 
     Task<Result> HandleCallbackAsync(HamkorCallbackRequest callback, CancellationToken cancellationToken = default);
 

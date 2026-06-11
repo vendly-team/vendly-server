@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
 using VendlyServer.Infrastructure.Brokers.Hamkor;
+using VendlyServer.Infrastructure.Brokers.Cbu;
 
 namespace VendlyServer.Infrastructure;
 
@@ -20,7 +21,8 @@ public static class Dependencies
             .ConfigureAuthentication()
             .ConfigureBtsExpress()
             .ConfigureSmartup()
-            .ConfigureHamkor();
+            .ConfigureHamkor()
+            .ConfigureCbuCurrency();
 
         return services;
     }
@@ -80,6 +82,20 @@ public static class Dependencies
         services.ConfigureOptions<HamkorOptionsSetup>();
         services.AddHttpClient("Hamkor");
         services.AddSingleton<IHamkorBroker, HamkorBroker>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureCbuCurrency(this IServiceCollection services)
+    {
+        services.AddMemoryCache();
+        services.AddHttpClient("CbuCurrency", client =>
+        {
+            client.BaseAddress = new Uri("https://cbu.uz/");
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+        });
+        services.AddSingleton<ICbuCurrencyBroker, CbuCurrencyBroker>();
 
         return services;
     }

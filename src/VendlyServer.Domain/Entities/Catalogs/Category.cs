@@ -1,6 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using VendlyServer.Domain.Entities.Common;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VendlyServer.Domain.Entities.Catalogs;
@@ -8,9 +8,7 @@ namespace VendlyServer.Domain.Entities.Catalogs;
 [Table("categories", Schema = "catalogs")]
 public class Category : AuditableModelBase<long>
 {
-    [Required]
-    [MaxLength(255)]
-    public required string Name { get; set; }
+    public MultiLanguageField Name { get; set; } = new();
 
     [MaxLength(300)]
     public string? Slug { get; set; }
@@ -24,4 +22,5 @@ public class Category : AuditableModelBase<long>
 
     public ICollection<Product> Products { get; set; } = [];
     public ICollection<Discount> Discounts { get; set; } = [];
+    public ICollection<CategoryPrice> Prices { get; set; } = [];
 }

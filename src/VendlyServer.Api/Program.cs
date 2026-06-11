@@ -24,6 +24,7 @@ builder.Services
     .ConfigureApplication()
     .ConfigureInfrastructure(builder.Configuration)
     .ConfigureSwagger()
+    .ConfigureExceptionHandler()
     .ConfigureControllers()
     .ConfigureCors()
     .ConfigureHangfire(builder.Configuration);
@@ -40,6 +41,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Enviro
     {
         options.DocumentTitle = "Vendly Server API";
         options.InjectStylesheet("/swagger-ui/custom.css");
+        options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
     });
     app.MapScalarApiReference(options =>
     {
