@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Application.Services.Products.Contracts;
 using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
@@ -14,6 +15,7 @@ public class ProductService(
     AppDbContext dbContext,
     IStorageService storageService,
     ILogger<ProductService> logger,
+    IProductPricingService pricingService,
     IOptions<ClientOptions> clientOptions) : IProductService
 {
     private readonly ClientOptions _clientOptions = clientOptions.Value;
@@ -36,10 +38,18 @@ public class ProductService(
             .Take(request.PageSize)
             .ToListAsync(ct);
 
+        var pricing = await ResolvePricingContextAsync("product list", ct);
+
         var items = products.Select(p =>
         {
             var variants = p.Variants.ToList();
             var defaultVariant = variants.Count > 0 ? variants.MinBy(v => v.Price) : null;
+
+            decimal? minPrice = defaultVariant is null
+                ? null
+                : pricing is null
+                    ? defaultVariant.Price
+                    : pricing.CalculateSoumPrice(defaultVariant.Price, p.CategoryId);
 
             return new ProductCardResponse(
                 p.Id,
@@ -47,7 +57,7 @@ public class ProductService(
                 p.CategoryId,
                 p.Category.Name,
                 p.Description,
-                (decimal?)defaultVariant?.Price,
+                minPrice,
                 variants.Sum(v => v.Quantity),
                 variants.Count,
                 variants.SelectMany(v => v.Images).FirstOrDefault(),
@@ -107,24 +117,38 @@ public class ProductService(
                 p.Variants.Any(v =>
                     !v.IsDeleted &&
                     (v.Name != null && v.Name.ToLower().Contains(normalizedQuery))))
-            .Select(p => new ProductSearchResponse(
+            .Select(p => new
+            {
                 p.Id,
                 p.Name,
-                p.Variants
+                p.CategoryId,
+                RawMinPrice = p.Variants
                     .Where(v => !v.IsDeleted && v.IsActive)
                     .Select(v => (decimal?)v.Price)
                     .Min() ?? 0m,
-                p.Variants.Count(v => !v.IsDeleted),
-                p.Variants
+                SkuCount = p.Variants.Count(v => !v.IsDeleted),
+                Images = p.Variants
                     .Where(v => !v.IsDeleted && v.IsActive)
                     .SelectMany(v => v.Images)
                     .Distinct()
                     .ToList(),
-                p.Variants.Any(v => !v.IsDeleted && v.IsActive && v.Quantity > 0),
-                BuildRedirectUrl(p.Name.Uz ?? p.Name.Ru ?? p.Name.En ?? string.Empty, p.Id, clientBaseUrl)))
+                IsAvailableForSale = p.Variants.Any(v => !v.IsDeleted && v.IsActive && v.Quantity > 0)
+            })
             .ToListAsync(ct);
 
-        return products;
+        var pricing = await ResolvePricingContextAsync("product search", ct);
+
+        var result = products.Select(p => new ProductSearchResponse(
+            p.Id,
+            p.Name,
+            pricing is null ? p.RawMinPrice : pricing.CalculateSoumPrice(p.RawMinPrice, p.CategoryId),
+            p.SkuCount,
+            p.Images,
+            p.IsAvailableForSale,
+            BuildRedirectUrl(p.Name.Uz ?? p.Name.Ru ?? p.Name.En ?? string.Empty, p.Id, clientBaseUrl)))
+            .ToList();
+
+        return result;
     }
 
     public async Task<Result<ProductAdminDetailResponse>> GetByIdAsync(long id, CancellationToken ct = default)
@@ -180,7 +204,19 @@ public class ProductService(
                 p.UpdatedAt))
             .SingleOrDefaultAsync(ct);
 
-        return product is null ? ProductErrors.NotFound : product;
+        if (product is null) return ProductErrors.NotFound;
+
+        var pricing = await ResolvePricingContextAsync($"product {id} detail", ct);
+        if (pricing is not null)
+        {
+            var repricedVariants = product.Variants
+                .Select(v => v with { Price = pricing.CalculateSoumPrice(v.Price, product.CategoryId) })
+                .ToList();
+
+            product = product with { Variants = repricedVariants };
+        }
+
+        return product;
     }
 
     public async Task<Result<long>> CreateAsync(CreateProductRequest request, CancellationToken ct = default)
@@ -521,6 +557,18 @@ public class ProductService(
             slug = "product";
 
         return $"{slug}-{id}";
+    }
+
+    // USD rate / category rule'lar mavjud bo'lmasa display narxlari raw qoladi (warning bilan)
+    private async Task<PricingContext?> ResolvePricingContextAsync(string surface, CancellationToken ct)
+    {
+        var result = await pricingService.CreateContextAsync(ct);
+        if (result.IsSuccess) return result.Data;
+
+        logger.LogWarning(
+            "Pricing context unavailable for {Surface}; returning raw prices ({Error})",
+            surface, result.Error.Code);
+        return null;
     }
 
     private async Task TryDeleteFileAsync(string fileUrl)

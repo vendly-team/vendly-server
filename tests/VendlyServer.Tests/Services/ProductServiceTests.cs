@@ -30,6 +30,7 @@ public class ProductServiceTests : IDisposable
             _db,
             new StubStorageService(),
             NullLogger<ProductService>.Instance,
+            new StubPricingService(),
             Options.Create(new ClientOptions { BaseUrl = "https://client.example.com" }));
 
         // Seed category

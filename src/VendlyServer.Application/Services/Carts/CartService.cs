@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using VendlyServer.Application.Services.Carts.Contracts;
+using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Enums;
@@ -7,7 +9,10 @@ using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Carts;
 
-public class CartService(AppDbContext dbContext) : ICartService
+public class CartService(
+    AppDbContext dbContext,
+    IProductPricingService pricingService,
+    ILogger<CartService> logger) : ICartService
 {
     public async Task<Result<CartResponse>> GetOrCreateAsync(long userId, CancellationToken cancellationToken = default)
     {
@@ -21,7 +26,8 @@ public class CartService(AppDbContext dbContext) : ICartService
         }
 
         var locked = await HasActiveOrderAsync(cart.Id, cancellationToken);
-        return MapToResponse(cart, locked);
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+        return MapToResponse(cart, pricing, locked);
     }
 
     public async Task<Result<CartResponse>> AddItemAsync(long userId, CartItemRequest request, CancellationToken cancellationToken = default)
@@ -70,7 +76,8 @@ public class CartService(AppDbContext dbContext) : ICartService
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await FindCartWithItemsAsync(userId, cancellationToken);
-        return MapToResponse(updated!);
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+        return MapToResponse(updated!, pricing);
     }
 
     public async Task<Result<CartResponse>> UpdateItemAsync(long userId, long cartItemId, UpdateCartItemRequest request, CancellationToken cancellationToken = default)
@@ -101,7 +108,8 @@ public class CartService(AppDbContext dbContext) : ICartService
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return MapToResponse(cart);
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+        return MapToResponse(cart, pricing);
     }
 
     public async Task<Result<CartResponse>> RemoveItemAsync(long userId, long cartItemId, CancellationToken cancellationToken = default)
@@ -123,7 +131,8 @@ public class CartService(AppDbContext dbContext) : ICartService
 
         item.IsDeleted = true;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return MapToResponse(cart);
+        var pricing = await ResolvePricingContextAsync(cancellationToken);
+        return MapToResponse(cart, pricing);
     }
 
     public async Task<Result> ClearAsync(long userId, CancellationToken cancellationToken = default)
@@ -153,10 +162,23 @@ public class CartService(AppDbContext dbContext) : ICartService
             .Include(c => c.Items.Where(i => !i.IsDeleted))
                 .ThenInclude(i => i.ProductVariant)
                     .ThenInclude(v => v.Product)
-            .SingleOrDefaultAsync(cancellationToken);
+            .OrderBy(c => c.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private static CartResponse MapToResponse(Cart cart, bool isLocked = false)
+    // USD rate / category rule'lar bo'lmasa savatchada raw narx qoladi (warning bilan)
+    private async Task<PricingContext?> ResolvePricingContextAsync(CancellationToken cancellationToken)
+    {
+        var result = await pricingService.CreateContextAsync(cancellationToken);
+        if (result.IsSuccess) return result.Data;
+
+        logger.LogWarning(
+            "Pricing context unavailable for cart; returning raw prices ({Error})",
+            result.Error.Code);
+        return null;
+    }
+
+    private static CartResponse MapToResponse(Cart cart, PricingContext? pricing, bool isLocked = false)
     {
         var items = cart.Items
             .Where(i => !i.IsDeleted)
@@ -166,7 +188,9 @@ public class CartService(AppDbContext dbContext) : ICartService
                 i.ProductVariant.ProductId,
                 i.ProductVariant.Product.Name.Uz ?? i.ProductVariant.Product.Name.Ru ?? string.Empty,
                 i.ProductVariant.Name,
-                i.ProductVariant.Price,
+                pricing is null
+                    ? i.ProductVariant.Price
+                    : pricing.CalculateSoumPrice(i.ProductVariant.Price, i.ProductVariant.Product.CategoryId),
                 i.ProductVariant.Images,
                 i.Qty,
                 i.ProductVariant.Quantity))

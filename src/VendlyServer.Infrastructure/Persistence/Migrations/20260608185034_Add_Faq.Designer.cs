@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VendlyServer.Infrastructure.Persistence;
@@ -12,9 +13,11 @@ using VendlyServer.Infrastructure.Persistence;
 namespace VendlyServer.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260608185034_Add_Faq")]
+    partial class Add_Faq
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,60 +69,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .HasName("pk_categories");
 
                     b.ToTable("categories", "catalogs");
-                });
-
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.CategoryPrice", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("CategoryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("category_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("end_date");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int>("MarkupType")
-                        .HasColumnType("integer")
-                        .HasColumnName("markup_type");
-
-                    b.Property<decimal?>("RoundingStep")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("rounding_step");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("start_date");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<decimal>("Value")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id")
-                        .HasName("pk_category_prices");
-
-                    b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_category_prices_category_id");
-
-                    b.ToTable("category_prices", "catalogs");
                 });
 
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Discount", b =>
@@ -1591,108 +1540,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     b.ToTable("return_reasons", "orders");
                 });
 
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Public.CompanyInfo", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("AccountNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("account_number");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("address");
-
-                    b.Property<string>("BankName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("bank_name");
-
-                    b.Property<string>("BrandName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("brand_name");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("Facebook")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("facebook");
-
-                    b.Property<string>("Inn")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("inn");
-
-                    b.Property<string>("Instagram")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("instagram");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("LogoUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("logo_url");
-
-                    b.Property<string>("Mfo")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("mfo");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("phone");
-
-                    b.Property<string>("Telegram")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("telegram");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("WorkingHours")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("working_hours");
-
-                    b.Property<string>("YouTube")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("you_tube");
-
-                    b.HasKey("Id")
-                        .HasName("pk_company_info");
-
-                    b.ToTable("company_info", "public");
-                });
-
             modelBuilder.Entity("VendlyServer.Domain.Entities.Public.Faq", b =>
                 {
                     b.Property<long>("Id")
@@ -2221,18 +2068,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.CategoryPrice", b =>
-                {
-                    b.HasOne("VendlyServer.Domain.Entities.Catalogs.Category", "Category")
-                        .WithMany("Prices")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_category_prices_categories_category_id");
-
-                    b.Navigation("Category");
-                });
-
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Discount", b =>
                 {
                     b.HasOne("VendlyServer.Domain.Entities.Catalogs.Category", null)
@@ -2736,41 +2571,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Public.CompanyInfo", b =>
-                {
-                    b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "OfertaUrl", b1 =>
-                        {
-                            b1.Property<long>("CompanyInfoId");
-
-                            b1.Property<string>("Cyrl")
-                                .HasJsonPropertyName("cyrl");
-
-                            b1.Property<string>("En")
-                                .HasJsonPropertyName("en");
-
-                            b1.Property<string>("Ru")
-                                .HasJsonPropertyName("ru");
-
-                            b1.Property<string>("Uz")
-                                .HasJsonPropertyName("uz");
-
-                            b1.HasKey("CompanyInfoId");
-
-                            b1.ToTable("company_info", "public");
-
-                            b1
-                                .ToJson("oferta_url")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("CompanyInfoId")
-                                .HasConstraintName("fk_company_info_company_info_id");
-                        });
-
-                    b.Navigation("OfertaUrl")
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("VendlyServer.Domain.Entities.Public.Faq", b =>
                 {
                     b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "Answer", b1 =>
@@ -2865,8 +2665,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("VendlyServer.Domain.Entities.Catalogs.Category", b =>
                 {
                     b.Navigation("Discounts");
-
-                    b.Navigation("Prices");
 
                     b.Navigation("Products");
                 });

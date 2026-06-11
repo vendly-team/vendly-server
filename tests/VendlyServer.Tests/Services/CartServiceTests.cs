@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using VendlyServer.Application.Services.Carts;
 using VendlyServer.Application.Services.Carts.Contracts;
 using VendlyServer.Domain.Entities.Catalogs;
@@ -19,7 +20,7 @@ public class CartServiceTests : IDisposable
             .Options;
 
         _db = new AppDbContext(options);
-        _service = new CartService(_db);
+        _service = new CartService(_db, new StubPricingService(), NullLogger<CartService>.Instance);
 
         var category = new Category { Id = 1, Name = "Cat" };
         var product = new Product { Id = 1, Name = "Prod", CategoryId = 1 };
