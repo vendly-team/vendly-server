@@ -71,7 +71,10 @@ public static class Dependencies
     private static IServiceCollection ConfigureSmartup(this IServiceCollection services)
     {
         services.ConfigureOptions<SmartupOptionsSetup>();
-        services.AddHttpClient("Smartup");
+        services.AddHttpClient("Smartup", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
         services.AddSingleton<ISmartupBroker, SmartupBroker>();
 
         return services;
