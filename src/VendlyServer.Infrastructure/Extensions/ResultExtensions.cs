@@ -24,7 +24,7 @@ public static class ResultExtensions
         ErrorType.NotFound     => StatusCodes.Status404NotFound,
         ErrorType.Conflict     => StatusCodes.Status409Conflict,
         ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        _                      => StatusCodes.Status400BadRequest
+        _                      => StatusCodes.Status500InternalServerError
     };
 
     private static string GetTitle(ErrorType errorType) => errorType switch
@@ -33,6 +33,6 @@ public static class ResultExtensions
         ErrorType.NotFound     => "Not Found",
         ErrorType.Conflict     => "Conflict",
         ErrorType.Unauthorized => "Unauthorized",
-        _                      => "Bad Request"
+        _                      => "Internal Server Error"
     };
 }
