@@ -1,3 +1,4 @@
+using System.Security.Authentication;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Domain.Enums;
@@ -15,13 +16,13 @@ public abstract class AuthorizedController : ControllerBase
         get
         {
             var raw = HttpContext.User.FindFirstValue(CustomClaims.Id)
-                      ?? throw new UnauthorizedAccessException("Required claim not found");
+                      ?? throw new AuthenticationException("Required claim not found");
             return (long)Convert.ChangeType(raw, typeof(long));
         }
     }
 
     protected UserRole Role => Enum.Parse<UserRole>(
         HttpContext.User.FindFirstValue(CustomClaims.Role)
-            ?? throw new UnauthorizedAccessException("Role claim not found"),
+            ?? throw new AuthenticationException("Role claim not found"),
         ignoreCase: true);
 }
