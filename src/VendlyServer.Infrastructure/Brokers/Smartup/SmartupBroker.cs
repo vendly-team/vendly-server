@@ -100,6 +100,11 @@ public class SmartupBroker(
             var data = JsonSerializer.Deserialize<T>(rawJson);
             return (data, responseBody, true, (int)sw.ElapsedMilliseconds, startedAt, finishedAt);
         }
+        catch (OperationCanceledException)
+        {
+            sw.Stop();
+            throw;
+        }
         catch (Exception ex)
         {
             sw.Stop();
