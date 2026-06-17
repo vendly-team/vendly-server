@@ -9,6 +9,7 @@ using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Infrastructure.Brokers.Hamkor;
 using VendlyServer.Infrastructure.Brokers.Hamkor.Contracts;
+using VendlyServer.Infrastructure.Payments;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.Checkout;
@@ -16,6 +17,7 @@ namespace VendlyServer.Application.Services.Checkout;
 public class CheckoutService(
     AppDbContext dbContext,
     IHamkorBroker hamkorBroker,
+    IEnumerable<IPaymentProvider> paymentProviders,
     IOptions<ClientOptions> clientOptions,
     IOptions<HamkorOptions> hamkorOptions,
     ILogger<CheckoutService> logger) : ICheckoutService
@@ -24,7 +26,7 @@ public class CheckoutService(
     private readonly HamkorOptions _hamkor = hamkorOptions.Value;
 
     public async Task<Result<CheckoutResponse>> InitiatePaymentAsync(
-        long userId, long orderId, CancellationToken cancellationToken = default)
+        long userId, long orderId, PaymentProvider provider, CancellationToken cancellationToken = default)
     {
         var order = await dbContext.Orders
             .Include(o => o.Items.Where(i => !i.IsDeleted))
@@ -34,6 +36,44 @@ public class CheckoutService(
         if (order is null) return CheckoutErrors.OrderNotFound;
         if (order.Status != OrderStatus.Draft) return CheckoutErrors.NotDraft;
 
+        string paymentUrl;
+        if (provider == PaymentProvider.Hamkor)
+        {
+            // Hamkor: outbound broker bankdan checkout URL oladi (fiskal ma'lumot bilan).
+            var hamkorUrl = await BuildHamkorUrlAsync(order, cancellationToken);
+            if (hamkorUrl.IsFailure)
+            {
+                logger.LogError("Checkout: failed to initiate payment for order {OrderNumber}", order.OrderNumber);
+                return CheckoutErrors.PaymentUrlFailed;
+            }
+            paymentUrl = hamkorUrl.Data!;
+        }
+        else
+        {
+            // Payme / Click: provider checkout URL'ni lokal quradi (outbound call yo'q).
+            var paymentProvider = paymentProviders.SingleOrDefault(
+                p => p.Name.Equals(provider.ToString(), StringComparison.OrdinalIgnoreCase));
+            if (paymentProvider is null) return CheckoutErrors.ProviderNotSupported;
+            paymentUrl = paymentProvider.CreatePaymentUrl(order);
+        }
+
+        order.Status = OrderStatus.New;
+        order.Payment = new Payment
+        {
+            Provider = provider,
+            Status = PaymentStatus.Pending,
+            Amount = order.TotalAmount,
+        };
+        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.New });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new CheckoutResponse(paymentUrl, order.OrderNumber);
+    }
+
+    // Hamkor checkout URL'ini quradi: fiskal qatorlar + Tashkent vaqti + broker chaqiruvi.
+    private async Task<Result<string>> BuildHamkorUrlAsync(Order order, CancellationToken cancellationToken)
+    {
         var clientBase = _client.BaseUrl.TrimEnd('/');
         var successUrl = $"{clientBase}/payment/success?order={order.OrderNumber}";
         var failureUrl = $"{clientBase}/payment/fail?order={order.OrderNumber}";
@@ -58,7 +98,7 @@ public class CheckoutService(
         var tashkentTime = TryConvertToTashkent(order.CreatedAt);
         var createdAtFormatted = tashkentTime.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
-        var urlResult = await hamkorBroker.CreatePaymentUrlAsync(
+        return await hamkorBroker.CreatePaymentUrlAsync(
             new HamkorCreatePaymentUrlRequest
             {
                 ExternalId = order.OrderNumber,
@@ -73,25 +113,6 @@ public class CheckoutService(
                 ],
             },
             cancellationToken);
-
-        if (urlResult.IsFailure)
-        {
-            logger.LogError("Checkout: failed to initiate payment for order {OrderNumber}", order.OrderNumber);
-            return CheckoutErrors.PaymentUrlFailed;
-        }
-
-        order.Status = OrderStatus.New;
-        order.Payment = new Payment
-        {
-            Provider = PaymentProvider.Hamkor,
-            Status = PaymentStatus.Pending,
-            Amount = order.TotalAmount,
-        };
-        order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.New });
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return new CheckoutResponse(urlResult.Data!, order.OrderNumber);
     }
 
     public async Task<Result> HandleCallbackAsync(

@@ -39,6 +39,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrderStatusHistory> OrderStatusHistories { get; set; }
     public DbSet<OrderNote> OrderNotes { get; set; }
     public DbSet<Payment> Payments { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
     public DbSet<OrderCancellation> OrderCancellations { get; set; }
     public DbSet<OrderReturn> OrderReturns { get; set; }
     public DbSet<OrderReturnItem> OrderReturnItems { get; set; }
@@ -117,6 +118,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.HasIndex(x => x.OrderId).IsUnique();
             entity.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            // Provider + provider tranzaksiya id — idempotentlik uchun unique.
+            entity.HasIndex(x => new { x.Provider, x.ProviderTransactionId }).IsUnique();
+            entity.HasOne(x => x.Payment)
+                .WithMany(p => p.Transactions)
+                .HasForeignKey(x => x.PaymentId);
         });
 
         modelBuilder.Entity<OrderCancellation>()

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using VendlyServer.Api.Controllers.Common;
 using VendlyServer.Application.Services.Checkout;
+using VendlyServer.Application.Services.Checkout.Contracts;
 using VendlyServer.Application.Services.Orders;
 using VendlyServer.Application.Services.Orders.Contracts;
 
@@ -30,11 +31,14 @@ public class OrdersController(IOrderService orderService, ICheckoutService check
         return result.IsSuccess ? Results.Ok() : result.ToProblemDetails();
     }
 
-    /// <summary>Initiate payment for a draft order and return the Hamkorbank payment page URL.</summary>
+    /// <summary>Initiate payment for a draft order with the chosen provider (Hamkor/Payme/Click) and return the payment page URL.</summary>
     [HttpPost("{id:long}/payment")]
-    public async Task<IResult> InitiatePaymentAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<IResult> InitiatePaymentAsync(
+        long id,
+        [FromBody] InitiatePaymentRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var result = await checkoutService.InitiatePaymentAsync(UserId, id, cancellationToken);
+        var result = await checkoutService.InitiatePaymentAsync(UserId, id, request.Provider, cancellationToken);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
