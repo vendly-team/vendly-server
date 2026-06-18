@@ -20,7 +20,7 @@ public class AuthService(
     {
         var user = await dbContext.Users
             .AsNoTracking()
-            .SingleOrDefaultAsync(u => (u.Phone == request.Login || u.Email == request.Login) && !u.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(u => (u.Phone == request.Login || u.Email == request.Login) && !u.IsDeleted, cancellationToken);
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
             return AuthErrors.InvalidCredentials;
@@ -38,6 +38,15 @@ public class AuthService(
             .AnyAsync(u => u.Phone == request.Phone && !u.IsDeleted, cancellationToken);
 
         if (exists) return AuthErrors.UserAlreadyExists;
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var emailExists = await dbContext.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
+
+            if (emailExists) return AuthErrors.UserAlreadyExists;
+        }
 
         var user = new User
         {
