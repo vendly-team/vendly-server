@@ -7,4 +7,5 @@ public static class StorageErrors
     public static readonly Error UploadFailed = Error.Failure("Storage.UploadFailed");
     public static readonly Error DeleteFailed = Error.Failure("Storage.DeleteFailed");
     public static readonly Error InvalidUrl = Error.Failure("Storage.InvalidUrl");
+    public static readonly Error InvalidKey = Error.Failure("Storage.InvalidKey");
 }

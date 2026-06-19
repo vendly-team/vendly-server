@@ -46,19 +46,17 @@ public class LocalStorageService(
 
     public Task<bool> ExistsAsync(string objectKey, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(
-            environment.WebRootPath, "uploads",
-            objectKey.Replace('/', Path.DirectorySeparatorChar));
-        return Task.FromResult(File.Exists(fullPath));
+        var fullPath = TryGetSafePath(objectKey);
+        return Task.FromResult(fullPath is not null && File.Exists(fullPath));
     }
 
     public async Task<Result<string>> UploadFromStreamAsync(
         Stream stream, string objectKey, string contentType, long size,
         CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(
-            environment.WebRootPath, "uploads",
-            objectKey.Replace('/', Path.DirectorySeparatorChar));
+        var fullPath = TryGetSafePath(objectKey);
+        if (fullPath is null)
+            return StorageErrors.InvalidKey;
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
@@ -70,4 +68,13 @@ public class LocalStorageService(
 
     public string GetPublicUrl(string objectKey) =>
         $"{_options.BaseUrl}/uploads/{objectKey}";
+
+    private string? TryGetSafePath(string objectKey)
+    {
+        var uploadsRoot = Path.GetFullPath(Path.Combine(environment.WebRootPath, "uploads"));
+        var fullPath    = Path.GetFullPath(Path.Combine(uploadsRoot, objectKey.Replace('/', Path.DirectorySeparatorChar)));
+        return fullPath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? fullPath
+            : null;
+    }
 }
