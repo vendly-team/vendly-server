@@ -8,10 +8,7 @@ namespace VendlyServer.Application.Services.Orders;
 // Create va cart-edit (re-sync) da bir xil ishlatiladi.
 public static class OrderItemSync
 {
-    // Mirrors the frontend DELIVERY_COST constant; move to delivery calculation/config later.
-    public const decimal DeliveryCost = 10m;
-
-    public static void Apply(Order order, IEnumerable<CartItem> cartItems, PricingContext pricing)
+    public static void Apply(Order order, IEnumerable<CartItem> cartItems, PricingContext pricing, decimal deliveryCost)
     {
         foreach (var existing in order.Items.Where(i => !i.IsDeleted))
             existing.IsDeleted = true;
@@ -39,6 +36,7 @@ public static class OrderItemSync
         }
 
         order.Subtotal = subtotal;
-        order.TotalAmount = subtotal + DeliveryCost;
+        order.DeliveryCost = deliveryCost;
+        order.TotalAmount = subtotal + deliveryCost;
     }
 }

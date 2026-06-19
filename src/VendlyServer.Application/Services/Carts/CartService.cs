@@ -157,7 +157,9 @@ public class CartService(
 
         if (order is not null && pricing is not null)
         {
-            OrderItemSync.Apply(order, cart.Items, pricing);
+            // Yetkazib berish narxi checkout (CreateDraft/SetAddress) da qayta hisoblanadi;
+            // bu yerda mavjud snapshotni saqlaymiz.
+            OrderItemSync.Apply(order, cart.Items, pricing, order.DeliveryCost);
             RevertToDraftIfNew(order);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -171,7 +173,7 @@ public class CartService(
         var pricing = await ResolvePricingContextAsync(cancellationToken);
         if (pricing is null) return;
 
-        OrderItemSync.Apply(order, cart.Items, pricing);
+        OrderItemSync.Apply(order, cart.Items, pricing, order.DeliveryCost);
         RevertToDraftIfNew(order);
     }
 

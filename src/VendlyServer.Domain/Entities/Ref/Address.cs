@@ -38,6 +38,9 @@ namespace VendlyServer.Domain.Entities.Ref
         [MaxLength(10)]
         public required string BtsCityCode { get; set; }
 
+        [MaxLength(10)]
+        public string? BtsBranchCode { get; set; }
+
         public bool IsDefault { get; set; }
 
         [ForeignKey(nameof(UserId))]

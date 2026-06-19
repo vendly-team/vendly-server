@@ -32,5 +32,8 @@ public class CreateAddressRequestValidator : AbstractValidator<CreateAddressRequ
         RuleFor(x => x.BtsCityCode)
             .NotEmpty().WithMessage("BtsCityCode is required.")
             .MaximumLength(10).WithMessage("BtsCityCode must not exceed 10 characters.");
+
+        RuleFor(x => x.BtsBranchCode)
+            .MaximumLength(10).WithMessage("BtsBranchCode must not exceed 10 characters.");
     }
 }

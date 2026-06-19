@@ -39,6 +39,7 @@ public class AddressServiceTests : IDisposable
             House: "12",
             Extra: null,
             BtsCityCode: btsCityCode,
+            BtsBranchCode: null,
             IsDefault: isDefault);
 
     private Address Seed(long userId, string label = "Old", bool isDefault = false, bool isDeleted = false, string btsCityCode = ValidCityCode)
@@ -185,6 +186,7 @@ public class AddressServiceTests : IDisposable
             House: "55",
             Extra: "Apartment 4",
             BtsCityCode: OtherCityCode,
+            BtsBranchCode: null,
             IsDefault: false));
 
         Assert.True(result.IsSuccess);
@@ -200,7 +202,7 @@ public class AddressServiceTests : IDisposable
         var result = await _service.UpdateAsync(UserA, stranger.Id, new UpdateAddressRequest(
             Label: "Hijack",
             City: "x", District: "x", Street: "x", House: "1", Extra: null,
-            BtsCityCode: ValidCityCode, IsDefault: false));
+            BtsCityCode: ValidCityCode, BtsBranchCode: null, IsDefault: false));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(AddressErrors.NotFound, result.Error);
@@ -213,7 +215,7 @@ public class AddressServiceTests : IDisposable
 
         var result = await _service.UpdateAsync(UserA, own.Id, new UpdateAddressRequest(
             Label: "X", City: "X", District: "X", Street: "X", House: "1", Extra: null,
-            BtsCityCode: "9999", IsDefault: false));
+            BtsCityCode: "9999", BtsBranchCode: null, IsDefault: false));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(AddressErrors.BtsCityCodeInvalid, result.Error);

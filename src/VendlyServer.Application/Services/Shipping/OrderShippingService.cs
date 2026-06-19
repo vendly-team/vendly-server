@@ -31,11 +31,14 @@ public class OrderShippingService(
         var weight = order.Items.Where(i => !i.IsDeleted).Sum(i => (double)i.WeightKgSnap * i.Qty);
         var pieces = order.Items.Where(i => !i.IsDeleted).Sum(i => i.Qty);
 
+        // Dropoff turi quote bilan mos bo'lishi shart: filial kodi bo'lsa filialga, bo'lmasa kuryer orqali.
+        var dropoffType = string.IsNullOrWhiteSpace(order.DeliveryBtsBranchCode) ? "courier" : "branch";
+
         var request = new BtsCreateOrderRequest
         {
             ClientId = order.OrderNumber,
             PickupType = _options.DefaultPickupType,
-            DropoffType = _options.DefaultDropoffType,
+            DropoffType = dropoffType,
             Sender = new BtsParty
             {
                 Name = _options.SenderName,
@@ -51,6 +54,7 @@ public class OrderShippingService(
                 Address = $"{order.DeliveryStreet}, {order.DeliveryHouse}"
                           + (string.IsNullOrWhiteSpace(order.DeliveryExtra) ? "" : $", {order.DeliveryExtra}"),
                 CityCode = order.DeliveryBtsCityCode,
+                BranchCode = order.DeliveryBtsBranchCode,
             },
             Cargo = new BtsCargo
             {
@@ -72,7 +76,8 @@ public class OrderShippingService(
         var data = createResult.Data;
         order.BtsOrderId = data.OrderId.ToString();
         order.BtsBarcode = data.Barcode;
-        order.BtsTrackingUrl = data.Tracking;
+        // BTS ba'zan bo'sh tracking qaytaradi — bo'sh stringни saqlamaymiz.
+        order.BtsTrackingUrl = string.IsNullOrWhiteSpace(data.Tracking) ? null : data.Tracking;
         order.DeliveryStatus = DeliveryStatus.Pending;
 
         // Sticker is best-effort — don't fail the shipment if it can't be fetched.
