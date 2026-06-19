@@ -110,10 +110,20 @@ public sealed class TelegramUpdateHandler(
                 "Failed to send Telegram rich start message to chat {ChatId}. Sending fallback message.",
                 message.Chat.Id);
 
-            await botClient.SendMessageAsync(
-                message.Chat.Id,
-                BuildFallbackStartMessage(emoji),
-                cancellationToken);
+            try
+            {
+                await botClient.SendMessageAsync(
+                    message.Chat.Id,
+                    BuildFallbackStartMessage(emoji),
+                    cancellationToken);
+            }
+            catch (Exception fallbackEx) when (fallbackEx is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogWarning(
+                    fallbackEx,
+                    "Failed to send Telegram fallback start message to chat {ChatId}. Giving up.",
+                    message.Chat.Id);
+            }
         }
     }
 
