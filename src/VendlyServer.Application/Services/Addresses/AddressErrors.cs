@@ -10,4 +10,7 @@ public static class AddressErrors
 
     public static readonly Error BtsCityCodeInvalid =
         Error.Validation("Address.BtsCityCodeInvalid", "BtsCityCode does not exist.");
+
+    public static readonly Error BtsBranchCodeInvalid =
+        Error.Validation("Address.BtsBranchCodeInvalid", "BtsBranchCode does not exist in the selected city.");
 }

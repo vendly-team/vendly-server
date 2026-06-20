@@ -8,5 +8,6 @@ public record UpdateAddressRequest(
     string House,
     string? Extra,
     string BtsCityCode,
+    string? BtsBranchCode,
     bool IsDefault
 );

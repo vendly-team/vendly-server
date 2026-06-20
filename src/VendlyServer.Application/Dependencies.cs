@@ -58,6 +58,7 @@ public static class Dependencies
         services.AddScoped<ICheckoutService, CheckoutService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IOrderShippingService, OrderShippingService>();
+        services.AddScoped<IShippingCalculatorService, ShippingCalculatorService>();
         services.AddScoped<ICurrencyConverterService, CurrencyConverterService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         services.AddScoped<ISyncLogService, SyncLogService>();

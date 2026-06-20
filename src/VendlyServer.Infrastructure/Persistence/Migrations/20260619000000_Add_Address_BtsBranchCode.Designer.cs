@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VendlyServer.Infrastructure.Persistence;
@@ -12,9 +13,11 @@ using VendlyServer.Infrastructure.Persistence;
 namespace VendlyServer.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619000000_Add_Address_BtsBranchCode")]
+    partial class Add_Address_BtsBranchCode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1032,11 +1035,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("delivered_at");
 
-                    b.Property<string>("DeliveryBtsBranchCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("delivery_bts_branch_code");
-
                     b.Property<string>("DeliveryBtsCityCode")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -1561,82 +1559,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_payments_order_id");
 
                     b.ToTable("payments", "orders");
-                });
-
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.PaymentTransaction", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("Amount")
-                        .HasColumnType("bigint")
-                        .HasColumnName("amount");
-
-                    b.Property<int?>("CancelReason")
-                        .HasColumnType("integer")
-                        .HasColumnName("cancel_reason");
-
-                    b.Property<DateTimeOffset?>("CancelTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("cancel_time");
-
-                    b.Property<DateTimeOffset>("CreateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("create_time");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<long?>("PaymeTime")
-                        .HasColumnType("bigint")
-                        .HasColumnName("payme_time");
-
-                    b.Property<long>("PaymentId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("payment_id");
-
-                    b.Property<DateTimeOffset?>("PerformTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("perform_time");
-
-                    b.Property<int>("Provider")
-                        .HasColumnType("integer")
-                        .HasColumnName("provider");
-
-                    b.Property<string>("ProviderTransactionId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("provider_transaction_id");
-
-                    b.Property<int>("State")
-                        .HasColumnType("integer")
-                        .HasColumnName("state");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_payment_transactions");
-
-                    b.HasIndex("PaymentId")
-                        .HasDatabaseName("ix_payment_transactions_payment_id");
-
-                    b.HasIndex("Provider", "ProviderTransactionId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_payment_transactions_provider_provider_transaction_id");
-
-                    b.ToTable("payment_transactions", "orders");
                 });
 
             modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.ReturnReason", b =>
@@ -2759,18 +2681,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.PaymentTransaction", b =>
-                {
-                    b.HasOne("VendlyServer.Domain.Entities.Orders.Payment", "Payment")
-                        .WithMany("Transactions")
-                        .HasForeignKey("PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_payment_transactions_payments_payment_id");
-
-                    b.Navigation("Payment");
-                });
-
             modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.ReturnReason", b =>
                 {
                     b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "Description", b1 =>
@@ -3035,11 +2945,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.OrderReturn", b =>
                 {
                     b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Orders.Payment", b =>
-                {
-                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("VendlyServer.Domain.Entities.Public.User", b =>

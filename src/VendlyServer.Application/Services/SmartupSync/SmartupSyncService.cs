@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -243,6 +244,7 @@ public class SmartupSyncService(
         var dbProducts = await dbContext.Products
             .Where(p => !p.IsDeleted && p.CategoryId == categoryId && p.SyncSource == SyncSource.External)
             .Include(p => p.Variants)
+                .ThenInclude(v => v.Measurements)
             .ToListAsync(cancellationToken);
 
         var existingDict = dbProducts
@@ -256,6 +258,10 @@ public class SmartupSyncService(
         {
             var price = decimal.TryParse(item.Price, out var p) ? p : 0m;
             var quantity = int.TryParse(item.BalanceQuant, out var q) ? q : 0;
+            // weight_brutto, kg, konvertatsiyasiz. Parse bo'lmasa/null → 0 (default og'irlik QO'YMAYMIZ).
+            var weightKg = decimal.TryParse(item.WeightBrutto, NumberStyles.Any, CultureInfo.InvariantCulture, out var w)
+                ? w
+                : 0m;
             var images = new List<string>();
             foreach (var sha in item.PhotoSha)
             {
@@ -294,6 +300,11 @@ public class SmartupSyncService(
                     variant.Quantity = quantity;
                     variant.Images = images;
                     variant.IsActive = true;
+
+                    if (variant.Measurements is null)
+                        variant.Measurements = new ProductMeasurement { WeightKg = weightKg };
+                    else
+                        variant.Measurements.WeightKg = weightKg;
                 }
 
                 updated++;
@@ -316,7 +327,8 @@ public class SmartupSyncService(
                     Price = price,
                     Quantity = quantity,
                     Images = images,
-                    IsActive = true
+                    IsActive = true,
+                    Measurements = new ProductMeasurement { WeightKg = weightKg }
                 });
 
                 created++;
