@@ -26,6 +26,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
                 a.House,
                 a.Extra,
                 a.BtsCityCode,
+                a.BtsBranchCode,
                 a.IsDefault,
                 a.CreatedAt))
             .ToListAsync(cancellationToken);
@@ -47,6 +48,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
                 a.House,
                 a.Extra,
                 a.BtsCityCode,
+                a.BtsBranchCode,
                 a.IsDefault,
                 a.CreatedAt))
             .SingleOrDefaultAsync(cancellationToken);
@@ -62,6 +64,9 @@ public class AddressService(AppDbContext dbContext) : IAddressService
 
         if (!btsCityExists)
             return AddressErrors.BtsCityCodeInvalid;
+
+        if (!await BtsBranchIsValidAsync(request.BtsBranchCode, request.BtsCityCode, cancellationToken))
+            return AddressErrors.BtsBranchCodeInvalid;
 
         var existingCount = await dbContext.Addresses
             .AsNoTracking()
@@ -92,6 +97,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
             House = request.House,
             Extra = request.Extra,
             BtsCityCode = request.BtsCityCode,
+            BtsBranchCode = request.BtsBranchCode,
             IsDefault = shouldBeDefault
         };
 
@@ -107,6 +113,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
             address.House,
             address.Extra,
             address.BtsCityCode,
+            address.BtsBranchCode,
             address.IsDefault,
             address.CreatedAt);
     }
@@ -129,6 +136,9 @@ public class AddressService(AppDbContext dbContext) : IAddressService
                 return AddressErrors.BtsCityCodeInvalid;
         }
 
+        if (!await BtsBranchIsValidAsync(request.BtsBranchCode, request.BtsCityCode, cancellationToken))
+            return AddressErrors.BtsBranchCodeInvalid;
+
         if (request.IsDefault && !address.IsDefault)
         {
             var defaults = await dbContext.Addresses
@@ -146,6 +156,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
         address.House = request.House;
         address.Extra = request.Extra;
         address.BtsCityCode = request.BtsCityCode;
+        address.BtsBranchCode = request.BtsBranchCode;
         address.IsDefault = request.IsDefault || address.IsDefault;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -159,6 +170,7 @@ public class AddressService(AppDbContext dbContext) : IAddressService
             address.House,
             address.Extra,
             address.BtsCityCode,
+            address.BtsBranchCode,
             address.IsDefault,
             address.CreatedAt);
     }
@@ -220,7 +232,29 @@ public class AddressService(AppDbContext dbContext) : IAddressService
             address.House,
             address.Extra,
             address.BtsCityCode,
+            address.BtsBranchCode,
             address.IsDefault,
             address.CreatedAt);
+    }
+
+    // Branch is optional; when provided it must belong to the same region as the
+    // selected city (branches across the whole region are offered to the user).
+    private async Task<bool> BtsBranchIsValidAsync(string? branchCode, string cityCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(branchCode))
+            return true;
+
+        var regionCode = await dbContext.BtsCities
+            .AsNoTracking()
+            .Where(c => c.Code == cityCode)
+            .Select(c => c.RegionCode)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (regionCode is null)
+            return false;
+
+        return await dbContext.BtsBranches
+            .AsNoTracking()
+            .AnyAsync(b => b.Code == branchCode && b.RegionCode == regionCode, cancellationToken);
     }
 }

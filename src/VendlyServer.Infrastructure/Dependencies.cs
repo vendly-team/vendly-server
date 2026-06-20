@@ -8,6 +8,9 @@ using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
 using VendlyServer.Infrastructure.Brokers.Hamkor;
 using VendlyServer.Infrastructure.Brokers.Cbu;
+using VendlyServer.Infrastructure.Payments;
+using VendlyServer.Infrastructure.Payments.Payme;
+using VendlyServer.Infrastructure.Payments.Click;
 
 namespace VendlyServer.Infrastructure;
 
@@ -22,6 +25,7 @@ public static class Dependencies
             .ConfigureBtsExpress()
             .ConfigureSmartup()
             .ConfigureHamkor()
+            .ConfigurePayments()
             .ConfigureCbuCurrency();
 
         return services;
@@ -82,6 +86,20 @@ public static class Dependencies
         services.ConfigureOptions<HamkorOptionsSetup>();
         services.AddHttpClient("Hamkor");
         services.AddSingleton<IHamkorBroker, HamkorBroker>();
+
+        return services;
+    }
+
+    // Payme + Click: strategiya-asosli to'lov provider'lari (Scoped — DbContext ishlatadi).
+    // Hamkor alohida (ConfigureHamkor) — u outbound broker, Singleton.
+    private static IServiceCollection ConfigurePayments(this IServiceCollection services)
+    {
+        services.ConfigureOptions<PaymentsOptionsSetup>();
+        services.ConfigureOptions<PaymeOptionsSetup>();
+        services.ConfigureOptions<ClickOptionsSetup>();
+
+        services.AddScoped<IPaymentProvider, PaymeProvider>();
+        services.AddScoped<IPaymentProvider, ClickProvider>();
 
         return services;
     }

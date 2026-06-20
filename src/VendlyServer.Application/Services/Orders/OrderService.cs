@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VendlyServer.Application.Services.Orders.Contracts;
 using VendlyServer.Application.Services.Pricing;
 using VendlyServer.Application.Services.Shipping;
+using VendlyServer.Application.Services.Shipping.Contracts;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Orders;
 using VendlyServer.Domain.Enums;
@@ -12,6 +13,7 @@ namespace VendlyServer.Application.Services.Orders;
 public class OrderService(
     AppDbContext dbContext,
     IOrderShippingService shippingService,
+    IShippingCalculatorService shippingCalculatorService,
     IProductPricingService pricingService) : IOrderService
 {
     // ── Customer — checkout flow ──────────────────────────────────────────────
@@ -53,8 +55,11 @@ public class OrderService(
             var existingItems = existing.Cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
             if (existingItems.Count == 0) return OrderErrors.CartEmpty;
 
+            var existingQuote = await QuoteForCartAsync(existingItems, address, cancellationToken);
+            if (!existingQuote.IsSuccess) return existingQuote.Error;
+
             ApplyAddress(existing, address);
-            OrderItemSync.Apply(existing, existingItems, pricing);
+            OrderItemSync.Apply(existing, existingItems, pricing, existingQuote.Data!.Cost);
 
             // To'lov boshlangan (New) bo'lsa — address/itemlar o'zgardi → eski Hamkor summasi eskirdi → Draft.
             if (existing.Status == OrderStatus.New)
@@ -86,13 +91,15 @@ public class OrderService(
         var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
         if (cart is null || items.Count == 0) return OrderErrors.CartEmpty;
 
+        var quote = await QuoteForCartAsync(items, address, cancellationToken);
+        if (!quote.IsSuccess) return quote.Error;
+
         var order = new Order
         {
             UserId = userId,
             OrderNumber = GenerateOrderNumber(),
             Status = OrderStatus.Draft,
             CartId = cart.Id,
-            DeliveryCost = OrderItemSync.DeliveryCost,
             DiscountAmount = 0,
             DeliveryCity = address.City,
             DeliveryDistrict = address.District,
@@ -100,9 +107,10 @@ public class OrderService(
             DeliveryHouse = address.House,
             DeliveryExtra = address.Extra,
             DeliveryBtsCityCode = address.BtsCityCode,
+            DeliveryBtsBranchCode = address.BtsBranchCode,
         };
 
-        OrderItemSync.Apply(order, items, pricing);
+        OrderItemSync.Apply(order, items, pricing, quote.Data!.Cost);
         order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Draft });
 
         // Cart endi shu orderga biriktirildi → keyingi GET /api/carts yangi bo'sh savat yaratadi.
@@ -167,21 +175,67 @@ public class OrderService(
         if (address is null) return OrderErrors.AddressNotFound;
 
         var order = await dbContext.Orders
+            .Include(o => o.Items.Where(i => !i.IsDeleted))
             .Where(o => o.Id == id && o.UserId == userId && !o.IsDeleted)
             .SingleOrDefaultAsync(cancellationToken);
 
         if (order is null) return OrderErrors.NotFound;
         if (order.Status != OrderStatus.Draft) return OrderErrors.NotDraft;
 
-        order.DeliveryCity = address.City;
-        order.DeliveryDistrict = address.District;
-        order.DeliveryStreet = address.Street;
-        order.DeliveryHouse = address.House;
-        order.DeliveryExtra = address.Extra;
-        order.DeliveryBtsCityCode = address.BtsCityCode;
+        var weight = (double)order.Items.Where(i => !i.IsDeleted).Sum(i => i.WeightKgSnap * i.Qty);
+        if (order.Items.Where(i => !i.IsDeleted).Any(i => i.WeightKgSnap <= 0) || weight <= 0)
+            return ShippingErrors.WeightMissing;
+
+        var quoteResult = await shippingCalculatorService.CalculateAsync(
+            new ShippingQuoteRequest(address.BtsCityCode, address.BtsBranchCode, weight), cancellationToken);
+        if (!quoteResult.IsSuccess) return quoteResult.Error;
+
+        ApplyAddress(order, address);
+        order.DeliveryCost = quoteResult.Data!.Cost;
+        order.TotalAmount = order.Subtotal + quoteResult.Data.Cost;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result.Success();
+    }
+
+    // Manzil tanlanganda checkoutdan oldin real-vaqt yetkazib berish narxini ko'rsatish uchun.
+    // Og'irlik server tomonda foydalanuvchining ochiq savatidan hisoblanadi (mijozga ishonilmaydi).
+    public async Task<Result<ShippingQuoteResponse>> QuoteForAddressAsync(
+        long userId, long addressId, CancellationToken cancellationToken = default)
+    {
+        var address = await dbContext.Addresses
+            .AsNoTracking()
+            .Where(a => a.Id == addressId && a.UserId == userId && !a.IsDeleted)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (address is null) return OrderErrors.AddressNotFound;
+
+        var cart = await dbContext.Carts
+            .Where(c => c.UserId == userId && !c.IsDeleted && !c.IsCheckedOut)
+            .Include(c => c.Items.Where(i => !i.IsDeleted))
+                .ThenInclude(i => i.ProductVariant)
+                    .ThenInclude(v => v.Measurements)
+            .OrderBy(c => c.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var items = cart?.Items.Where(i => !i.IsDeleted).ToList() ?? [];
+        if (cart is null || items.Count == 0) return OrderErrors.CartEmpty;
+
+        return await QuoteForCartAsync(items, address, cancellationToken);
+    }
+
+    // Cart itemlaridan og'irlik hisoblab BTS quote oladi. Biror item og'irligi yoki jami og'irlik <=0 → WeightMissing.
+    private async Task<Result<ShippingQuoteResponse>> QuoteForCartAsync(
+        List<CartItem> items, Domain.Entities.Ref.Address address, CancellationToken cancellationToken)
+    {
+        var active = items.Where(i => !i.IsDeleted).ToList();
+        var weight = (double)active.Sum(i => (i.ProductVariant.Measurements?.WeightKg ?? 0) * i.Qty);
+
+        if (active.Any(i => (i.ProductVariant.Measurements?.WeightKg ?? 0) <= 0) || weight <= 0)
+            return ShippingErrors.WeightMissing;
+
+        return await shippingCalculatorService.CalculateAsync(
+            new ShippingQuoteRequest(address.BtsCityCode, address.BtsBranchCode, weight), cancellationToken);
     }
 
     // ── Customer — read ───────────────────────────────────────────────────────
@@ -397,6 +451,7 @@ public class OrderService(
         order.DeliveryHouse = address.House;
         order.DeliveryExtra = address.Extra;
         order.DeliveryBtsCityCode = address.BtsCityCode;
+        order.DeliveryBtsBranchCode = address.BtsBranchCode;
     }
 
     private IQueryable<Order> QueryDetail() =>

@@ -50,6 +50,9 @@ public class Order : AuditableModelBase<long>
     [MaxLength(10)]
     public required string DeliveryBtsCityCode { get; set; }
 
+    [MaxLength(10)]
+    public string? DeliveryBtsBranchCode { get; set; }
+
     [MaxLength(50)]
     public string? BtsOrderId { get; set; }
 

@@ -1,5 +1,6 @@
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Application.Services.Orders.Contracts;
+using VendlyServer.Application.Services.Shipping.Contracts;
 
 namespace VendlyServer.Application.Services.Orders;
 
@@ -8,6 +9,7 @@ public interface IOrderService
     // Customer — checkout flow
     Task<Result<CreateOrderResponse>> CreateDraftAsync(long userId, CreateOrderRequest request, CancellationToken cancellationToken = default);
     Task<Result> SetAddressAsync(long userId, long id, SetOrderAddressRequest request, CancellationToken cancellationToken = default);
+    Task<Result<ShippingQuoteResponse>> QuoteForAddressAsync(long userId, long addressId, CancellationToken cancellationToken = default);
     Task<Result<List<OrderListItemResponse>>> GetActiveOrdersAsync(long userId, CancellationToken cancellationToken = default);
     Task<Result> CancelDraftAsync(long userId, long orderId, CancellationToken cancellationToken = default);
 

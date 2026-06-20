@@ -21,6 +21,8 @@ public interface IBtsRefService
 
     // Branches
     Task<Result<List<BtsBranchResponse>>> GetAllBranchesAsync(CancellationToken cancellationToken = default);
+    Task<Result<List<BtsBranchResponse>>> GetBranchesByCityAsync(string cityCode, CancellationToken cancellationToken = default);
+    Task<Result<List<BtsBranchResponse>>> GetBranchesByRegionAsync(string regionCode, CancellationToken cancellationToken = default);
     Task<Result<BtsBranchResponse>> GetBranchByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<Result> AddBranchAsync(SaveBtsBranchRequest request, CancellationToken cancellationToken = default);
     Task<Result> UpdateBranchAsync(long id, SaveBtsBranchRequest request, CancellationToken cancellationToken = default);
