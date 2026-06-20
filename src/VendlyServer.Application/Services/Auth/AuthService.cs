@@ -35,7 +35,7 @@ public class AuthService(
     {
         var exists = await dbContext.Users
             .AsNoTracking()
-            .AnyAsync(u => u.Phone == request.Phone && !u.IsDeleted, cancellationToken);
+            .AnyAsync(u => (u.Phone == request.Phone || (request.Email != null && u.Email == request.Email)) && !u.IsDeleted, cancellationToken);
 
         if (exists) return AuthErrors.UserAlreadyExists;
 
