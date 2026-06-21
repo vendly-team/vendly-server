@@ -58,6 +58,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
     public DbSet<NotificationLog> NotificationLogs { get; set; }
+    public DbSet<SmsMessage> SmsMessages { get; set; }
     public DbSet<SyncLog> SyncLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -150,6 +151,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<BtsPostTypeRef>()
             .HasIndex(x => x.BtsId).IsUnique();
+
+        // Eskiz callback'i RequestId bo'yicha qidiradi.
+        modelBuilder.Entity<SmsMessage>()
+            .HasIndex(x => x.RequestId);
 
         // === Owned entities ===
 

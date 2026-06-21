@@ -7,9 +7,13 @@ namespace VendlyServer.Application.Services.Telegram;
 public sealed class TelegramWebhookHostedService(
     ITelegramBotClient botClient,
     IOptions<TelegramBotOptions> options,
+    IHostEnvironment environment,
     ILogger<TelegramWebhookHostedService> logger) : IHostedService
 {
     private readonly TelegramBotOptions _options = options.Value;
+
+    private string EnvironmentPrefix =>
+        environment.IsStaging() ? "[STAGE] " : string.Empty;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -18,7 +22,7 @@ public sealed class TelegramWebhookHostedService(
 
         var webhookUrl = $"{_options.PublicBaseUrl.TrimEnd('/')}/api/telegram/webhook";
         await botClient.SetWebhookAsync(webhookUrl, _options.WebhookSecretToken, cancellationToken);
-        await NotifyAdminsAsync("✅ Vendly Telegram bot ishga tushdi. Inline qidiruv tayyor 🔎", cancellationToken);
+        await NotifyAdminsAsync($"{EnvironmentPrefix}✅ Vendly Telegram bot ishga tushdi. Inline qidiruv tayyor 🔎", cancellationToken);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -26,7 +30,7 @@ public sealed class TelegramWebhookHostedService(
         if (!CanRun())
             return;
 
-        await NotifyAdminsAsync("🛑 Vendly Telegram bot to'xtadi.", cancellationToken);
+        await NotifyAdminsAsync($"{EnvironmentPrefix}🛑 Vendly Telegram bot to'xtadi.", cancellationToken);
     }
 
     private bool CanRun()
