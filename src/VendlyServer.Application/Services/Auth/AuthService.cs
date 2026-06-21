@@ -149,13 +149,13 @@ public class AuthService(
             return AuthErrors.OtpInvalid;
         }
 
-        cache.Remove(key);
-
         var user = await dbContext.Users
             .SingleOrDefaultAsync(u => u.Phone == request.Phone && !u.IsDeleted, cancellationToken);
 
         if (user is null)
             return AuthErrors.UserNotFound;
+
+        cache.Remove(key);
 
         user.IsVerified = true;
         await dbContext.SaveChangesAsync(cancellationToken);
