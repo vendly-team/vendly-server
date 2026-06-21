@@ -28,6 +28,7 @@ using VendlyServer.Application.Services.Analytics;
 using VendlyServer.Application.Services.SyncLogs;
 using VendlyServer.Application.Services.ReturnReasons;
 using VendlyServer.Application.Services.Faqs;
+using VendlyServer.Application.Services.Sms;
 
 namespace VendlyServer.Application;
 
@@ -64,6 +65,7 @@ public static class Dependencies
         services.AddScoped<ISyncLogService, SyncLogService>();
         services.AddScoped<IReturnReasonService, ReturnReasonService>();
         services.AddScoped<IFaqService, FaqService>();
+        services.AddScoped<ISmsService, SmsService>();
 
         services.AddScoped<IBtsCatalogSyncJob, BtsCatalogSyncJob>();
         services.AddScoped<ICleanExpiredRefreshTokensJob, CleanExpiredRefreshTokensJob>();

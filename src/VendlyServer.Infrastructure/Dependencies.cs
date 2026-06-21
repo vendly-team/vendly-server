@@ -8,6 +8,7 @@ using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
 using VendlyServer.Infrastructure.Brokers.Hamkor;
 using VendlyServer.Infrastructure.Brokers.Cbu;
+using VendlyServer.Infrastructure.Brokers.Eskiz;
 using VendlyServer.Infrastructure.Payments;
 using VendlyServer.Infrastructure.Payments.Payme;
 using VendlyServer.Infrastructure.Payments.Click;
@@ -25,6 +26,7 @@ public static class Dependencies
             .ConfigureBtsExpress()
             .ConfigureSmartup()
             .ConfigureHamkor()
+            .ConfigureEskiz()
             .ConfigurePayments()
             .ConfigureCbuCurrency();
 
@@ -100,6 +102,15 @@ public static class Dependencies
 
         services.AddScoped<IPaymentProvider, PaymeProvider>();
         services.AddScoped<IPaymentProvider, ClickProvider>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureEskiz(this IServiceCollection services)
+    {
+        services.ConfigureOptions<EskizOptionsSetup>();
+        services.AddHttpClient("Eskiz");
+        services.AddSingleton<IEskizBroker, EskizBroker>();
 
         return services;
     }

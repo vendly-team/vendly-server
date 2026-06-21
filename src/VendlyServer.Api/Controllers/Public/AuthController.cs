@@ -17,7 +17,13 @@ public class AuthController(IAuthService authService) : AuthorizedController
         CancellationToken cancellationToken = default)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
-        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
+        if (result.IsFailure) return result.ToProblemDetails();
+
+        var loginResult = result.Data;
+        if (loginResult.Auth != null) return Results.Ok(loginResult.Auth);
+        if (loginResult.Otp != null) return Results.Ok(loginResult.Otp);
+
+        return result.ToProblemDetails();
     }
 
     /// <summary>Register a new customer account.</summary>
@@ -28,6 +34,33 @@ public class AuthController(IAuthService authService) : AuthorizedController
         CancellationToken cancellationToken = default)
     {
         var result = await authService.RegisterAsync(request, cancellationToken);
+        return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
+    }
+
+    /// <summary>Verify OTP for registration or login — auto-detects the flow.</summary>
+    [AllowAnonymous]
+    [HttpPost("verify-otp")]
+    public async Task<IResult> VerifyOtpAsync(
+        [FromBody] VerifyOtpRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await authService.VerifyLoginOtpAsync(request, cancellationToken);
+        if (result.IsSuccess)
+            return Results.Ok(result.Data);
+
+        // Agar login OTP bo'lmasa (user topilmasa) — registration OTP deb o'ylamiz.
+        var registrationResult = await authService.VerifyRegistrationOtpAsync(request, cancellationToken);
+        return registrationResult.IsSuccess ? Results.Ok(registrationResult.Data) : registrationResult.ToProblemDetails();
+    }
+
+    /// <summary>Resend the registration OTP code.</summary>
+    [AllowAnonymous]
+    [HttpPost("resend-otp")]
+    public async Task<IResult> ResendOtpAsync(
+        [FromBody] ResendOtpRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await authService.ResendOtpAsync(request, cancellationToken);
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
