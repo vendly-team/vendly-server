@@ -401,20 +401,14 @@ public class ProductService(
                 Price = 0,
                 Quantity = 0,
                 IsActive = true,
-                Images = new List<string>()
+                Images = new List<string>(),
+                OptionValues = combo.Select(opt => new VariantOptionValue
+                {
+                    VariantOptionId = opt.Id
+                }).ToList()
             };
 
             dbContext.ProductVariants.Add(newVariant);
-            await dbContext.SaveChangesAsync(ct);
-
-            foreach (var opt in combo)
-            {
-                dbContext.VariantOptionValues.Add(new VariantOptionValue
-                {
-                    ProductVariantId = newVariant.Id,
-                    VariantOptionId = opt.Id
-                });
-            }
         }
 
         foreach (var v in existingVariants.Where(v => !usedVariantIds.Contains(v.Id)))
