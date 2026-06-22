@@ -62,8 +62,8 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-      - MINIO_SERVER_URL=https://files.vestor.uz
-      - MINIO_BROWSER_REDIRECT_URL=https://files.vestor.uz/console
+      - MINIO_SERVER_URL=https://files.optoweek.uz
+      - MINIO_BROWSER_REDIRECT_URL=https://files.optoweek.uz/console
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
