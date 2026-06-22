@@ -2,7 +2,7 @@ namespace VendlyServer.Domain.Enums;
 
 public enum PaymentProvider
 {
-    Click, 
-    Payme, 
-    Card
+    Hamkor = 1,
+    Payme = 2,
+    Click = 3
 }

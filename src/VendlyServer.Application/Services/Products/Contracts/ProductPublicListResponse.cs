@@ -1,8 +1,10 @@
+using VendlyServer.Domain.Entities.Common;
+
 namespace VendlyServer.Application.Services.Products.Contracts;
 
 public record ProductPublicListResponse(
     long Id,
-    string Name,
+    MultiLanguageField Name,
     long CategoryId,
-    string CategoryName,
+    MultiLanguageField CategoryName,
     decimal? MinPrice);

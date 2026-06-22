@@ -74,7 +74,7 @@ public class WishlistsControllerTests
 
         var result = await CreateController().AddAsync(new AddWishlistRequest(10));
 
-        Assert.IsType<Ok>(result);
+        Assert.IsType<Ok<WishlistResponse>>(result);
     }
 
     [Fact]
@@ -129,8 +129,10 @@ public class WishlistsControllerTests
                 ? Result<WishlistResponse>.Failure(e)
                 : Result<WishlistResponse>.Success(GetByIdResult!));
 
-        public Task<Result> AddAsync(long userId, AddWishlistRequest request, CancellationToken ct = default)
-            => Task.FromResult(AddError is { } e ? Result.Failure(e) : Result.Success());
+        public Task<Result<WishlistResponse>> AddAsync(long userId, AddWishlistRequest request, CancellationToken ct = default)
+            => Task.FromResult(AddError is { } e
+                ? Result<WishlistResponse>.Failure(e)
+                : Result<WishlistResponse>.Success(new WishlistResponse(1, request.ProductId, DateTime.UtcNow)));
 
         public Task<Result> DeleteAsync(long id, long userId, CancellationToken ct = default)
             => Task.FromResult(DeleteError is { } e ? Result.Failure(e) : Result.Success());

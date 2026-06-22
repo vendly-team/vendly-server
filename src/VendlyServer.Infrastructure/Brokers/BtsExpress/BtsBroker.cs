@@ -306,24 +306,83 @@ public class BtsBroker(
         var token = await GetAccessTokenAsync(cancellationToken);
         if (token is null) return default;
 
-        var client = CreateHttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var response = await client.GetAsync(path, cancellationToken);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized && !isRetry)
+        const int maxAttempts = 6;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            await RefreshTokenAsync(cancellationToken);
-            return await SendGetAsync<T>(path, cancellationToken, isRetry: true);
+            try
+            {
+                var client = CreateHttpClient();
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await client.GetAsync(path, cancellationToken);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized && !isRetry)
+                {
+                    await RefreshTokenAsync(cancellationToken);
+                    return await SendGetAsync<T>(path, cancellationToken, isRetry: true);
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Vaqtinchalik xatolar (5xx / 429 / 408) → qayta urinamiz; boshqasi → to'xtaymiz.
+                    if (IsTransient(response.StatusCode) && attempt < maxAttempts)
+                    {
+                        // 429 da server bergan Retry-After ni hurmat qilamiz, aks holda eksponensial backoff.
+                        var delay = response.StatusCode == HttpStatusCode.TooManyRequests
+                            ? RetryAfterMs(response, attempt)
+                            : RetryDelayMs(attempt);
+                        await Task.Delay(delay, cancellationToken);
+                        continue;
+                    }
+
+                    logger.LogWarning("BTS GET {Path} failed with {StatusCode}", path, response.StatusCode);
+                    return default;
+                }
+
+                return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+            }
+            // Timeout / tarmoq uzilishi — abort qilmaymiz, qayta urinamiz (haqiqiy cancel bundan mustasno).
+            catch (Exception ex) when ((ex is HttpRequestException or TaskCanceledException)
+                                       && !cancellationToken.IsCancellationRequested)
+            {
+                if (attempt >= maxAttempts)
+                {
+                    logger.LogWarning(ex, "BTS GET {Path} failed after {Attempts} attempts", path, attempt);
+                    return default;
+                }
+
+                await Task.Delay(RetryDelayMs(attempt), cancellationToken);
+            }
         }
 
-        if (!response.IsSuccessStatusCode)
+        return default;
+    }
+
+    private static bool IsTransient(HttpStatusCode statusCode) =>
+        statusCode is HttpStatusCode.RequestTimeout            // 408
+            or HttpStatusCode.TooManyRequests                 // 429
+            or HttpStatusCode.InternalServerError             // 500
+            or HttpStatusCode.BadGateway                      // 502
+            or HttpStatusCode.ServiceUnavailable              // 503
+            or HttpStatusCode.GatewayTimeout;                 // 504
+
+    private static int RetryDelayMs(int attempt) => attempt * 500;
+
+    // 429 uchun: server bergan Retry-After (sekund yoki sana) ni ishlatamiz; bo'lmasa
+    // eksponensial backoff (1s, 2s, 4s, 8s ... 30s gacha).
+    private static int RetryAfterMs(HttpResponseMessage response, int attempt)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta && delta > TimeSpan.Zero)
+            return (int)Math.Min(delta.TotalMilliseconds, 30_000);
+
+        if (retryAfter?.Date is { } date)
         {
-            logger.LogWarning("BTS GET {Path} failed with {StatusCode}", path, response.StatusCode);
-            return default;
+            var ms = (date - DateTimeOffset.UtcNow).TotalMilliseconds;
+            if (ms > 0) return (int)Math.Min(ms, 30_000);
         }
 
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+        return Math.Min(30_000, 1000 * (int)Math.Pow(2, attempt - 1));
     }
 
     private async Task<T?> SendPostAsync<T>(string path, object body, CancellationToken cancellationToken,
@@ -345,7 +404,10 @@ public class BtsBroker(
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("BTS POST {Path} failed with {StatusCode}", path, response.StatusCode);
+            // BTS qaytargan xato matnini ham yozamiz — validation sabablari shu yerda bo'ladi.
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            logger.LogWarning("BTS POST {Path} failed with {StatusCode}: {Body}",
+                path, response.StatusCode, errorBody);
             return default;
         }
 

@@ -6,6 +6,12 @@ using VendlyServer.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using VendlyServer.Infrastructure.Brokers.BtsExpress;
 using VendlyServer.Infrastructure.Brokers.Smartup;
+using VendlyServer.Infrastructure.Brokers.Hamkor;
+using VendlyServer.Infrastructure.Brokers.Cbu;
+using VendlyServer.Infrastructure.Brokers.Eskiz;
+using VendlyServer.Infrastructure.Payments;
+using VendlyServer.Infrastructure.Payments.Payme;
+using VendlyServer.Infrastructure.Payments.Click;
 
 namespace VendlyServer.Infrastructure;
 
@@ -18,7 +24,11 @@ public static class Dependencies
             .ConfigureDbContext(configuration)
             .ConfigureAuthentication()
             .ConfigureBtsExpress()
-            .ConfigureSmartup();
+            .ConfigureSmartup()
+            .ConfigureHamkor()
+            .ConfigureEskiz()
+            .ConfigurePayments()
+            .ConfigureCbuCurrency();
 
         return services;
     }
@@ -69,6 +79,52 @@ public static class Dependencies
         services.ConfigureOptions<SmartupOptionsSetup>();
         services.AddHttpClient("Smartup");
         services.AddSingleton<ISmartupBroker, SmartupBroker>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureHamkor(this IServiceCollection services)
+    {
+        services.ConfigureOptions<HamkorOptionsSetup>();
+        services.AddHttpClient("Hamkor");
+        services.AddSingleton<IHamkorBroker, HamkorBroker>();
+
+        return services;
+    }
+
+    // Payme + Click: strategiya-asosli to'lov provider'lari (Scoped — DbContext ishlatadi).
+    // Hamkor alohida (ConfigureHamkor) — u outbound broker, Singleton.
+    private static IServiceCollection ConfigurePayments(this IServiceCollection services)
+    {
+        services.ConfigureOptions<PaymentsOptionsSetup>();
+        services.ConfigureOptions<PaymeOptionsSetup>();
+        services.ConfigureOptions<ClickOptionsSetup>();
+
+        services.AddScoped<IPaymentProvider, PaymeProvider>();
+        services.AddScoped<IPaymentProvider, ClickProvider>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureEskiz(this IServiceCollection services)
+    {
+        services.ConfigureOptions<EskizOptionsSetup>();
+        services.AddHttpClient("Eskiz");
+        services.AddSingleton<IEskizBroker, EskizBroker>();
+
+        return services;
+    }
+
+    private static IServiceCollection ConfigureCbuCurrency(this IServiceCollection services)
+    {
+        services.AddMemoryCache();
+        services.AddHttpClient("CbuCurrency", client =>
+        {
+            client.BaseAddress = new Uri("https://cbu.uz/");
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+        });
+        services.AddSingleton<ICbuCurrencyBroker, CbuCurrencyBroker>();
 
         return services;
     }

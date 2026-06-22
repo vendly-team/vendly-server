@@ -9,6 +9,7 @@ public record AddressResponse(
     string House,
     string? Extra,
     string BtsCityCode,
+    string? BtsBranchCode,
     bool IsDefault,
     DateTime CreatedAt
 );

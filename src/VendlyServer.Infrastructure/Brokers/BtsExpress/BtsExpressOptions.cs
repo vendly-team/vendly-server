@@ -12,8 +12,10 @@ public class BtsExpressOptions
     public string SenderAddress { get; set; } = string.Empty;
     public string SenderCityCode { get; set; } = string.Empty;
     public string SenderBranchCode { get; set; } = string.Empty;
-    public string DefaultPickupType { get; set; } = "self";
-    public string DefaultDropoffType { get; set; } = "courier";
+    public string DefaultPickupType { get; set; } = string.Empty;
     public int DefaultPackageId { get; set; } = 7;
     public int DefaultPostTypeId { get; set; } = 7;
+
+    // Optional shared secret to validate the BTS status webhook (empty = accept all).
+    public string WebhookSecretToken { get; set; } = string.Empty;
 }

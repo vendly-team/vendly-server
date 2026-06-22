@@ -15,6 +15,7 @@ public class CategoryService(
         var categories = await dbContext.Categories
             .AsNoTracking()
             .Where(c => !c.IsDeleted && c.IsActive)
+            .Where(c => c.Products.Any(p => !p.IsDeleted && p.IsActive))
             .Select(c => new CategoryResponse(
                 c.Id, c.Name, c.Slug, c.ImageUrl, c.IsActive,
                 c.Products.Count(p => !p.IsDeleted && p.IsActive),
@@ -41,7 +42,7 @@ public class CategoryService(
     public async Task<Result> AddAsync(CreateCategoryRequest request, CancellationToken cancellationToken = default)
     {
         var existing = await dbContext.Categories
-            .SingleOrDefaultAsync(c => c.Name == request.Name, cancellationToken);
+            .SingleOrDefaultAsync(c => c.Name.Uz == request.Name.Uz, cancellationToken);
 
         if (existing is not null)
         {
@@ -140,6 +141,24 @@ public class CategoryService(
 
         category.IsActive = !category.IsActive;
         await dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    public async Task<Result> DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await dbContext.Categories.ToListAsync(cancellationToken);
+
+        var imageUrls = categories
+            .Where(c => c.ImageUrl is not null)
+            .Select(c => c.ImageUrl!)
+            .ToList();
+
+        dbContext.Categories.RemoveRange(categories);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        foreach (var url in imageUrls)
+            await TryDeleteFileAsync(url);
+
         return Result.Success();
     }
 

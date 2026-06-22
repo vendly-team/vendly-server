@@ -1,5 +1,6 @@
 using Hangfire;
 using Scalar.AspNetCore;
+using Serilog;
 using VendlyServer.Api;
 using VendlyServer.Api.Filters;
 using VendlyServer.Application;
@@ -10,10 +11,20 @@ using VendlyServer.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Serilog: writes to console + Seq (configured via appsettings:Serilog).
+builder.Host.UseSerilog((context, services, configuration) =>
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "VendlyServer")
+        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName));
+
 builder.Services
     .ConfigureApplication()
     .ConfigureInfrastructure(builder.Configuration)
     .ConfigureSwagger()
+    .ConfigureExceptionHandler()
     .ConfigureControllers()
     .ConfigureCors()
     .ConfigureHangfire(builder.Configuration);
@@ -30,6 +41,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Enviro
     {
         options.DocumentTitle = "Vendly Server API";
         options.InjectStylesheet("/swagger-ui/custom.css");
+        options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
     });
     app.MapScalarApiReference(options =>
     {

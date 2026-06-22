@@ -50,6 +50,9 @@ public class Order : AuditableModelBase<long>
     [MaxLength(10)]
     public required string DeliveryBtsCityCode { get; set; }
 
+    [MaxLength(10)]
+    public string? DeliveryBtsBranchCode { get; set; }
+
     [MaxLength(50)]
     public string? BtsOrderId { get; set; }
 
@@ -73,6 +76,8 @@ public class Order : AuditableModelBase<long>
 
     public long? DiscountId { get; set; }
 
+    public long? CartId { get; set; }
+
     public JsonDocument? Metadata { get; set; }
 
     [ForeignKey(nameof(UserId))]
@@ -80,6 +85,9 @@ public class Order : AuditableModelBase<long>
 
     [ForeignKey(nameof(DiscountId))]
     public Discount? Discount { get; set; }
+
+    [ForeignKey(nameof(CartId))]
+    public Cart? Cart { get; set; }
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<OrderStatusHistory> StatusHistory { get; set; } = new List<OrderStatusHistory>();

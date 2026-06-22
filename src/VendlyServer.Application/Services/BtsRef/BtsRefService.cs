@@ -161,6 +161,34 @@ public class BtsRefService(AppDbContext dbContext) : IBtsRefService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<Result<List<BtsBranchResponse>>> GetBranchesByCityAsync(string cityCode, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.BtsBranches
+            .AsNoTracking()
+            .Where(b => b.CityCode == cityCode)
+            .Select(b => new BtsBranchResponse
+            {
+                Id = b.Id, RegionCode = b.RegionCode, CityCode = b.CityCode,
+                Code = b.Code, Name = b.Name, Address = b.Address,
+                Phone = b.Phone, LatLong = b.LatLong, WorkingHours = b.WorkingHours, SyncedAt = b.SyncedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Result<List<BtsBranchResponse>>> GetBranchesByRegionAsync(string regionCode, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.BtsBranches
+            .AsNoTracking()
+            .Where(b => b.RegionCode == regionCode)
+            .Select(b => new BtsBranchResponse
+            {
+                Id = b.Id, RegionCode = b.RegionCode, CityCode = b.CityCode,
+                Code = b.Code, Name = b.Name, Address = b.Address,
+                Phone = b.Phone, LatLong = b.LatLong, WorkingHours = b.WorkingHours, SyncedAt = b.SyncedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Result<BtsBranchResponse>> GetBranchByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var branch = await dbContext.BtsBranches

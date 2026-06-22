@@ -1,15 +1,18 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using VendlyServer.Application.Services.Storages;
 using VendlyServer.Domain.Abstractions;
 using VendlyServer.Domain.Entities.Catalogs;
+using VendlyServer.Domain.Entities.Common;
 using VendlyServer.Domain.Entities.Diagnostics;
 using VendlyServer.Domain.Enums;
 using VendlyServer.Domain.Utils;
 using VendlyServer.Infrastructure.Brokers.Smartup;
 using VendlyServer.Infrastructure.Brokers.Smartup.Contracts.Responses;
+using VendlyServer.Infrastructure.Extensions;
 using VendlyServer.Infrastructure.Persistence;
 
 namespace VendlyServer.Application.Services.SmartupSync;
@@ -17,10 +20,9 @@ namespace VendlyServer.Application.Services.SmartupSync;
 public class SmartupSyncService(
     ISmartupBroker smartupBroker,
     AppDbContext dbContext,
-    IOptions<SmartupOptions> options,
-    ILogger<SmartupSyncService> logger) : ISmartupSyncService
+    ILogger<SmartupSyncService> logger,
+    IStorageService storageService) : ISmartupSyncService
 {
-    private readonly string _imageBaseUrl = options.Value.ImageBaseUrl;
 
     public async Task<Result> SyncAsync(CancellationToken cancellationToken = default)
     {
@@ -115,14 +117,23 @@ public class SmartupSyncService(
 
         foreach (var cat in categories)
         {
-            var imageUrl = BuildCategoryImageUrl(cat);
+            var sha = cat.Style?.L?.PhotoSha;
+            var imageUrl = string.IsNullOrEmpty(sha) ? null : await ResolveImageUrlAsync(sha, cancellationToken);
             var metadata = JsonSerializer.SerializeToDocument(new { source_id = cat.ProductTypeId });
 
             var slug = SlugHelper.ToSlug(cat.Name);
 
+            var localizedName = new MultiLanguageField
+            {
+                Cyrl = cat.Name.LatinToCyrillicUz(),
+                Ru = cat.Name.LatinToCyrillicUz(),
+                Uz = cat.Name.CyrillicToLatinUz(),
+                En = cat.Name.CyrillicToLatinUz()
+            };
+
             if (existing.TryGetValue(cat.ProductTypeId, out var entity))
             {
-                entity.Name = cat.Name;
+                entity.Name = localizedName;
                 entity.Slug = slug;
                 entity.Metadata = metadata;
                 if (imageUrl is not null) entity.ImageUrl = imageUrl;
@@ -132,7 +143,7 @@ public class SmartupSyncService(
             {
                 dbContext.Categories.Add(new Category
                 {
-                    Name = cat.Name,
+                    Name = localizedName,
                     Slug = slug,
                     ImageUrl = imageUrl,
                     IsActive = true,
@@ -233,6 +244,7 @@ public class SmartupSyncService(
         var dbProducts = await dbContext.Products
             .Where(p => !p.IsDeleted && p.CategoryId == categoryId && p.SyncSource == SyncSource.External)
             .Include(p => p.Variants)
+                .ThenInclude(v => v.Measurements)
             .ToListAsync(cancellationToken);
 
         var existingDict = dbProducts
@@ -246,7 +258,16 @@ public class SmartupSyncService(
         {
             var price = decimal.TryParse(item.Price, out var p) ? p : 0m;
             var quantity = int.TryParse(item.BalanceQuant, out var q) ? q : 0;
-            var images = item.PhotoSha.Select(BuildImageUrl).ToList();
+            // weight_brutto, kg, konvertatsiyasiz. Parse bo'lmasa/null → 0 (default og'irlik QO'YMAYMIZ).
+            var weightKg = decimal.TryParse(item.WeightBrutto, NumberStyles.Any, CultureInfo.InvariantCulture, out var w)
+                ? w
+                : 0m;
+            var images = new List<string>();
+            foreach (var sha in item.PhotoSha)
+            {
+                var url = await ResolveImageUrlAsync(sha, cancellationToken);
+                if (url is not null) images.Add(url);
+            }
             var metadata = JsonSerializer.SerializeToDocument(new
             {
                 source_id = item.ProductId,
@@ -255,9 +276,18 @@ public class SmartupSyncService(
                 measure = item.MeasureShortName
             });
 
+            var trimmedName = TrimLastWords(item.Name, 2);
+            var productName = new MultiLanguageField
+            {
+                Cyrl = trimmedName.LatinToCyrillicUz(),
+                Ru = trimmedName.LatinToCyrillicUz(),
+                Uz = trimmedName.CyrillicToLatinUz(),
+                En = trimmedName.CyrillicToLatinUz()
+            };
+
             if (existingDict.TryGetValue(item.ProductId, out var product))
             {
-                product.Name = item.Name;
+                product.Name = productName;
                 product.Description = item.GenName;
                 product.CategoryId = categoryId;
                 product.IsActive = true;
@@ -270,6 +300,11 @@ public class SmartupSyncService(
                     variant.Quantity = quantity;
                     variant.Images = images;
                     variant.IsActive = true;
+
+                    if (variant.Measurements is null)
+                        variant.Measurements = new ProductMeasurement { WeightKg = weightKg };
+                    else
+                        variant.Measurements.WeightKg = weightKg;
                 }
 
                 updated++;
@@ -278,7 +313,7 @@ public class SmartupSyncService(
             {
                 var newProduct = new Product
                 {
-                    Name = item.Name,
+                    Name = productName,
                     Description = item.GenName,
                     CategoryId = categoryId,
                     SyncSource = SyncSource.External,
@@ -292,7 +327,8 @@ public class SmartupSyncService(
                     Price = price,
                     Quantity = quantity,
                     Images = images,
-                    IsActive = true
+                    IsActive = true,
+                    Measurements = new ProductMeasurement { WeightKg = weightKg }
                 });
 
                 created++;
@@ -325,6 +361,12 @@ public class SmartupSyncService(
         };
     }
 
+    private static string TrimLastWords(string name, int count)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length <= count ? name : string.Join(' ', parts[..^count]);
+    }
+
     private static bool TryGetSourceId(JsonDocument? metadata, out string? sourceId)
     {
         sourceId = null;
@@ -340,13 +382,31 @@ public class SmartupSyncService(
         return id;
     }
 
-    private string BuildImageUrl(string sha) =>
-        $"{_imageBaseUrl}/b/biruni/m:load_image?sha={sha}";
-
-    private string? BuildCategoryImageUrl(SmartupCategoryItem cat)
+    private async Task<string?> ResolveImageUrlAsync(string sha, CancellationToken cancellationToken)
     {
-        var sha = cat.Style?.L?.PhotoSha;
-        return string.IsNullOrEmpty(sha) ? null : BuildImageUrl(sha);
+        var objectKey = $"smartup/{sha}";
+
+        if (await storageService.ExistsAsync(objectKey, cancellationToken))
+            return storageService.GetPublicUrl(objectKey);
+
+        var download = await smartupBroker.DownloadImageAsync(sha, cancellationToken);
+        if (download.IsFailure)
+        {
+            logger.LogWarning("Smartup: image sha={Sha} download failed — {Error}", sha, download.Error.Code);
+            return null;
+        }
+
+        await using var content = download.Data!.Content;
+        var upload = await storageService.UploadFromStreamAsync(
+            content, objectKey, download.Data.ContentType, download.Data.Size, cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            logger.LogWarning("Smartup: image sha={Sha} upload failed — {Error}", sha, upload.Error.Code);
+            return null;
+        }
+
+        return upload.Data;
     }
 
     private async Task FinishLogAsync(SyncLog log, SyncStatus status, Stopwatch sw,

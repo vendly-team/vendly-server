@@ -80,6 +80,9 @@ public class BtsCatalogSyncJob(
         return regions;
     }
 
+    // BTS rate-limit (429) ga tushmaslik uchun ketma-ket so'rovlar orasidagi kechikish.
+    private const int ThrottleDelayMs = 400;
+
     private async Task SyncCitiesAndBranchesAsync(List<BtsRegion> regions, DateTime syncedAt,
         CancellationToken cancellationToken)
     {
@@ -96,6 +99,7 @@ public class BtsCatalogSyncJob(
 
         foreach (var region in regions)
         {
+            await Task.Delay(ThrottleDelayMs, cancellationToken);
             var citiesResult = await btsBroker.GetCitiesAsync(region.Code, forceRefresh: true, cancellationToken);
             if (citiesResult.IsFailure)
             {
@@ -107,6 +111,10 @@ public class BtsCatalogSyncJob(
             var cities = citiesResult.Data!;
             foreach (var city in cities)
             {
+                // Bo'sh kodli yozuvlar unique indeksda to'qnashadi — o'tkazib yuboramiz.
+                if (string.IsNullOrWhiteSpace(city.Code))
+                    continue;
+
                 if (existingCities.TryGetValue(city.Code, out var cityEntity))
                 {
                     cityEntity.RegionCode = region.Code;
@@ -116,16 +124,21 @@ public class BtsCatalogSyncJob(
                 }
                 else
                 {
-                    dbContext.BtsCities.Add(new BtsCityRef
+                    var newCity = new BtsCityRef
                     {
                         RegionCode = region.Code,
                         Code = city.Code,
                         Name = city.Name,
                         SyncedAt = syncedAt
-                    });
+                    };
+                    dbContext.BtsCities.Add(newCity);
+                    // Yangi entity'ni lug'atga qo'shamiz — aks holda shu run'da kod
+                    // takrorlansa qayta INSERT bo'lib, unique indeks buziladi.
+                    existingCities[city.Code] = newCity;
                     citiesCreated++;
                 }
 
+                await Task.Delay(ThrottleDelayMs, cancellationToken);
                 var branchesResult = await btsBroker.GetBranchesAsync(
                     region.Code, city.Code, forceRefresh: true, cancellationToken);
 
@@ -139,6 +152,10 @@ public class BtsCatalogSyncJob(
 
                 foreach (var branch in branchesResult.Data!)
                 {
+                    // Bo'sh kodli yozuvlar unique indeksda to'qnashadi — o'tkazib yuboramiz.
+                    if (string.IsNullOrWhiteSpace(branch.Code))
+                        continue;
+
                     if (existingBranches.TryGetValue(branch.Code, out var branchEntity))
                     {
                         branchEntity.RegionCode = branch.RegionCode;
@@ -153,7 +170,7 @@ public class BtsCatalogSyncJob(
                     }
                     else
                     {
-                        dbContext.BtsBranches.Add(new BtsBranchRef
+                        var newBranch = new BtsBranchRef
                         {
                             RegionCode = branch.RegionCode,
                             CityCode = branch.CityCode,
@@ -164,7 +181,11 @@ public class BtsCatalogSyncJob(
                             LatLong = branch.LatLong,
                             WorkingHours = SerializeWorkingHours(branch.WorkingHours),
                             SyncedAt = syncedAt
-                        });
+                        };
+                        dbContext.BtsBranches.Add(newBranch);
+                        // Yangi entity'ni lug'atga qo'shamiz — shu run'da kod takrorlansa
+                        // qayta INSERT bo'lib unique indeks buzilishining oldini oladi.
+                        existingBranches[branch.Code] = newBranch;
                         branchesCreated++;
                     }
                 }

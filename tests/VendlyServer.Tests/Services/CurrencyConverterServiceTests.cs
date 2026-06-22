@@ -2,12 +2,16 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Currencies;
+using VendlyServer.Domain.Abstractions;
+using VendlyServer.Infrastructure.Brokers.Cbu;
+using VendlyServer.Infrastructure.Brokers.Cbu.Contracts.Responses;
 
 namespace VendlyServer.Tests.Services;
 
 public class CurrencyConverterServiceTests
 {
     private readonly FakeCurrencyApiClient _client = new();
+    private readonly FakeCbuCurrencyBroker _cbuBroker = new();
     private readonly CurrencyConverterService _service;
 
     public CurrencyConverterServiceTests()
@@ -25,6 +29,7 @@ public class CurrencyConverterServiceTests
         _service = new CurrencyConverterService(
             cache,
             _client,
+            _cbuBroker,
             options,
             NullLogger<CurrencyConverterService>.Instance);
     }
@@ -77,6 +82,20 @@ public class CurrencyConverterServiceTests
         Assert.Equal(CurrencyErrors.CurrencyNotFound("AAA"), result.Error);
     }
 
+    [Fact]
+    public async Task GetUsdRate_ReturnsRateFromCbuBroker()
+    {
+        _cbuBroker.Result = Result<CbuUsdRateResponse>.Success(new(12049.44m, 52.23m, "08.06.2026"));
+
+        var result = await _service.GetUsdRateAsync();
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(12049.44m, result.Data!.Rate);
+        Assert.Equal(52.23m, result.Data.Diff);
+        Assert.Equal("08.06.2026", result.Data.Date);
+        Assert.Equal(1, _cbuBroker.CallCount);
+    }
+
     private sealed class FakeCurrencyApiClient : ICurrencyApiClient
     {
         public Dictionary<string, int> CallCount { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -85,7 +104,21 @@ public class CurrencyConverterServiceTests
         public Task<decimal?> GetExchangeRateAsync(string currencyCode, CancellationToken cancellationToken = default)
         {
             CallCount[currencyCode] = CallCount.GetValueOrDefault(currencyCode) + 1;
-            return Task.FromResult<decimal?>(Rates.GetValueOrDefault(currencyCode));
+            return Task.FromResult(Rates.TryGetValue(currencyCode, out var rate) ? (decimal?)rate : null);
+        }
+    }
+
+    private sealed class FakeCbuCurrencyBroker : ICbuCurrencyBroker
+    {
+        public int CallCount { get; private set; }
+
+        public Result<CbuUsdRateResponse> Result { get; set; } =
+            Result<CbuUsdRateResponse>.Failure(CbuCurrencyErrors.GetCurrencyRatesFailed);
+
+        public Task<Result<CbuUsdRateResponse>> GetUsdRateAsync(CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(Result);
         }
     }
 }

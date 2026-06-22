@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Http;
+using VendlyServer.Domain.Entities.Common;
 
 namespace VendlyServer.Application.Services.Categories.Contracts;
 
 public record CreateCategoryRequest(
-    string Name,
+    MultiLanguageField Name,
     IFormFile? Image
 );

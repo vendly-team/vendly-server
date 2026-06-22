@@ -11,4 +11,5 @@ public interface ICategoryService
     Task<Result> UpdateAsync(long id, UpdateCategoryRequest request, CancellationToken cancellationToken = default);
     Task<Result> DeleteAsync(long id, CancellationToken cancellationToken = default);
     Task<Result> ToggleActiveAsync(long id, CancellationToken cancellationToken = default);
+    Task<Result> DeleteAllAsync(CancellationToken cancellationToken = default);
 }

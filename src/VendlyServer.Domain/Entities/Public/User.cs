@@ -15,9 +15,8 @@ public class User : AuditableModelBase<long>
     [MaxLength(100)]
     public required string FirstName { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public required string LastName { get; set; }
+    public string? LastName { get; set; }
 
     [Required]
     [MaxLength(20)]
@@ -30,6 +29,8 @@ public class User : AuditableModelBase<long>
     public required string PasswordHash { get; set; }
 
     public UserRole Role { get; set; } = UserRole.Customer;
+
+    public bool IsVerified { get; set; }
 
     public bool IsBlocked { get; set; }
 

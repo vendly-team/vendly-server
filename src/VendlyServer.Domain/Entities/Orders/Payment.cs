@@ -24,4 +24,6 @@ public class Payment : AuditableModelBase<long>
 
     [ForeignKey(nameof(OrderId))]
     public Order Order { get; set; } = null!;
+
+    public ICollection<PaymentTransaction> Transactions { get; set; } = new List<PaymentTransaction>();
 }

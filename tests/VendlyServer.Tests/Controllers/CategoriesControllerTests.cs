@@ -24,8 +24,8 @@ public class CategoriesControllerTests
     {
         _svc.GetAllResult = Result<List<CategoryResponse>>.Success(
         [
-            new(1, "Electronics", null, true, DateTime.UtcNow, null),
-            new(2, "Clothing", null, false, DateTime.UtcNow, null)
+            new(1, "Electronics", null, null, true, 0, DateTime.UtcNow, null),
+            new(2, "Clothing", null, null, false, 0, DateTime.UtcNow, null)
         ]);
 
         var result = await CreateController().GetAllAsync();
@@ -38,7 +38,7 @@ public class CategoriesControllerTests
     public async Task GetById_ReturnsOkWithData_OnSuccess()
     {
         _svc.GetByIdResult = Result<CategoryResponse>.Success(
-            new(1, "Electronics", "img.png", true, DateTime.UtcNow, null));
+            new(1, "Electronics", null, "img.png", true, 0, DateTime.UtcNow, null));
 
         var result = await CreateController().GetByIdAsync(1);
 
@@ -139,11 +139,12 @@ public class CategoriesControllerTests
     private class FakeCategoryService : ICategoryService
     {
         public Result<List<CategoryResponse>> GetAllResult { get; set; } = Result<List<CategoryResponse>>.Success([]);
-        public Result<CategoryResponse> GetByIdResult { get; set; } = Result<CategoryResponse>.Success(new(1, "Test", null, true, DateTime.UtcNow, null));
+        public Result<CategoryResponse> GetByIdResult { get; set; } = Result<CategoryResponse>.Success(new(1, "Test", null, null, true, 0, DateTime.UtcNow, null));
         public Result AddResult { get; set; } = Result.Success();
         public Result UpdateResult { get; set; } = Result.Success();
         public Result DeleteResult { get; set; } = Result.Success();
         public Result ToggleResult { get; set; } = Result.Success();
+        public Result DeleteAllResult { get; set; } = Result.Success();
 
         public Task<Result<List<CategoryResponse>>> GetAllAsync(CancellationToken ct = default) => Task.FromResult(GetAllResult);
         public Task<Result<CategoryResponse>> GetByIdAsync(long id, CancellationToken ct = default) => Task.FromResult(GetByIdResult);
@@ -151,5 +152,6 @@ public class CategoriesControllerTests
         public Task<Result> UpdateAsync(long id, UpdateCategoryRequest r, CancellationToken ct = default) => Task.FromResult(UpdateResult);
         public Task<Result> DeleteAsync(long id, CancellationToken ct = default) => Task.FromResult(DeleteResult);
         public Task<Result> ToggleActiveAsync(long id, CancellationToken ct = default) => Task.FromResult(ToggleResult);
+        public Task<Result> DeleteAllAsync(CancellationToken ct = default) => Task.FromResult(DeleteAllResult);
     }
 }

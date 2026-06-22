@@ -1,3 +1,5 @@
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Telegram;
@@ -33,7 +35,31 @@ public class TelegramWebhookHostedServiceTests
         Assert.All(client.SentMessages, message => Assert.Contains("to'xtadi", message.Text));
     }
 
-    private static TelegramWebhookHostedService CreateService(FakeTelegramBotClient client)
+    [Fact]
+    public async Task StartAsync_PrefixesMessageWithStage_WhenEnvironmentIsStaging()
+    {
+        var client = new FakeTelegramBotClient();
+        var service = CreateService(client, environmentName: "Staging");
+
+        await service.StartAsync(CancellationToken.None);
+
+        Assert.All(client.SentMessages, message => Assert.StartsWith("[STAGE] ", message.Text));
+    }
+
+    [Fact]
+    public async Task StartAsync_DoesNotPrefixMessage_WhenEnvironmentIsProduction()
+    {
+        var client = new FakeTelegramBotClient();
+        var service = CreateService(client, environmentName: "Production");
+
+        await service.StartAsync(CancellationToken.None);
+
+        Assert.All(client.SentMessages, message => Assert.DoesNotContain("[STAGE]", message.Text));
+    }
+
+    private static TelegramWebhookHostedService CreateService(
+        FakeTelegramBotClient client,
+        string environmentName = "Production")
     {
         return new TelegramWebhookHostedService(
             client,
@@ -44,7 +70,16 @@ public class TelegramWebhookHostedServiceTests
                 WebhookSecretToken = "secret",
                 AdminChatIds = [10, 20]
             }),
+            new FakeHostEnvironment { EnvironmentName = environmentName },
             NullLogger<TelegramWebhookHostedService>.Instance);
+    }
+
+    private sealed class FakeHostEnvironment : IHostEnvironment
+    {
+        public string ApplicationName { get; set; } = "VendlyServer.Tests";
+        public string EnvironmentName { get; set; } = "Production";
+        public string ContentRootPath { get; set; } = string.Empty;
+        public IFileProvider ContentRootFileProvider { get; set; } = null!;
     }
 
     private sealed class FakeTelegramBotClient : ITelegramBotClient
