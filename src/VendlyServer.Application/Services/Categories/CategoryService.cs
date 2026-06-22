@@ -98,7 +98,8 @@ public class CategoryService(
             var oldUrl = category.ImageUrl;
             imageUrl = upload.Data;
             category.ImageUrl = imageUrl;
-            category.Name = request.Name;
+            if (request.Name is not null) 
+                category.Name = request.Name;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -107,7 +108,8 @@ public class CategoryService(
         }
         else
         {
-            category.Name = request.Name;
+            if (request.Name is not null)
+                category.Name = request.Name;
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
