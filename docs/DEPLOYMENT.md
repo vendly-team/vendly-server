@@ -61,10 +61,10 @@ Hammasi **bitta Ubuntu serverda** ishlaydi. Production va Staging — yonma-yon,
 
 | Domain | Backend | Internal port |
 |---|---|---|
-| `api-opto.vestor.uz` | `vendly-prod` | `127.0.0.1:150 → :8080` |
-| `stage-opto.vestor.uz` | `vendly-staging` | `127.0.0.1:151 → :8080` |
-| `files.vestor.uz` | `vendly-minio` (S3 API) | `127.0.0.1:9000` |
-| `files.vestor.uz/console/` | `vendly-minio` (Admin UI) | `127.0.0.1:9001` |
+| `api.optoweek.uz` | `vendly-prod` | `127.0.0.1:150 → :8080` |
+| `stage-api.optoweek.uz` | `vendly-staging` | `127.0.0.1:151 → :8080` |
+| `files.optoweek.uz` | `vendly-minio` (S3 API) | `127.0.0.1:9000` |
+| `files.optoweek.uz/console/` | `vendly-minio` (Admin UI) | `127.0.0.1:9001` |
 
 **Hech qachon** MinIO portlarini (`9000`, `9001`) public expose qilma — Nginx ulardan oldida turadi va HTTPS terminate qiladi.
 
@@ -74,8 +74,8 @@ MinIO'da ikkita bucket:
 
 | Bucket | Kim ishlatadi | Public URL prefix |
 |---|---|---|
-| `prod-vendly` | `vendly-prod` | `https://files.vestor.uz/prod-vendly/...` |
-| `stage-vendly` | `vendly-staging` | `https://files.vestor.uz/stage-vendly/...` |
+| `prod-vendly` | `vendly-prod` | `https://files.optoweek.uz/prod-vendly/...` |
+| `stage-vendly` | `vendly-staging` | `https://files.optoweek.uz/stage-vendly/...` |
 
 Ikkalasi ham **anonymous download** policy bilan — har kim URL'ni ochib rasm/file ko'ra oladi (yuklay olmaydi).
 
@@ -144,7 +144,7 @@ git add .
 git commit -m "feat: add X"
 git push
 # CI ishga tushadi → staging deploy bo'ladi
-# stage-opto.vestor.uz da test qil
+# stage-api.optoweek.uz da test qil
 ```
 
 **Prod'ga chiqarish:**
@@ -209,30 +209,30 @@ Vhost fayllari: `/etc/nginx/sites-available/`, symlink qilingan: `/etc/nginx/sit
 ```bash
 ls /etc/nginx/sites-enabled/
 # default
-# minio_vendly         → files.vestor.uz
-# prod_vendly_backend  → api-opto.vestor.uz
-# stage_vendly_backend → stage-opto.vestor.uz
+# minio_vendly         → files.optoweek.uz
+# prod_vendly_backend  → api.optoweek.uz
+# stage_vendly_backend → stage-api.optoweek.uz
 ```
 
 ### 4.1 MinIO vhost (`minio_vendly`)
 
-`files.vestor.uz` — MinIO console + S3 API.
+`files.optoweek.uz` — MinIO console + S3 API.
 
 ```nginx
 server {
     listen 80;
-    server_name files.vestor.uz;
-    if ($host = files.vestor.uz) { return 301 https://$host$request_uri; }
+    server_name files.optoweek.uz;
+    if ($host = files.optoweek.uz) { return 301 https://$host$request_uri; }
     return 404;
 }
 
 server {
     listen 443 ssl;
     http2 on;
-    server_name files.vestor.uz;
+    server_name files.optoweek.uz;
 
-    ssl_certificate     /etc/letsencrypt/live/files.vestor.uz/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/files.vestor.uz/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/files.optoweek.uz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/files.optoweek.uz/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -271,8 +271,8 @@ server {
 
 ### 4.2 App vhost'lari (prod va stage)
 
-`api-opto.vestor.uz` — port 150'ga proxy qiladi.
-`stage-opto.vestor.uz` — port 151'ga proxy qiladi.
+`api.optoweek.uz` — port 150'ga proxy qiladi.
+`stage-api.optoweek.uz` — port 151'ga proxy qiladi.
 
 ### 4.3 Nginx o'zgartirsang
 
@@ -321,7 +321,7 @@ sudo certbot --nginx -d <new-domain>
     "AccessKey": "vendlyadmin",
     "SecretKey": "rI0eSKvglRFjLz0TxhrlBB5I0boruQnf",
     "BucketName": "prod-vendly",
-    "PublicBaseUrl": "https://files.vestor.uz",
+    "PublicBaseUrl": "https://files.optoweek.uz",
     "UseSsl": false
   }
 }
@@ -337,9 +337,9 @@ App container ichidan host Postgres'ga ulanish uchun. Container `host-gateway` o
 
 Apps `vendly-net` tarmog'ida bo'lgani uchun — Docker DNS'ida `minio` hostname `vendly-minio` container'iga resolve bo'ladi. HTTPS'ga ehtiyoj yo'q (ichki tarmoq).
 
-### 5.5 Nima uchun `PublicBaseUrl=https://files.vestor.uz` ?
+### 5.5 Nima uchun `PublicBaseUrl=https://files.optoweek.uz` ?
 
-App'ning **client'larga qaytaradigan** URL. Brauzer/mobile MinIO'ga `files.vestor.uz` orqali yetadi (Nginx → port 9000).
+App'ning **client'larga qaytaradigan** URL. Brauzer/mobile MinIO'ga `files.optoweek.uz` orqali yetadi (Nginx → port 9000).
 
 ---
 
@@ -355,7 +355,7 @@ git push
 # 2-3 daqiqa kut, Github Actions tab'ida ko'rinishini tekshir
 ```
 
-Tekshirish: `https://stage-opto.vestor.uz/swagger`.
+Tekshirish: `https://stage-api.optoweek.uz/swagger`.
 
 ### 6.2 Prod'ga release qilish
 
@@ -411,7 +411,7 @@ Hozir `IStorageService` har doim `MinioOptions.BucketName`'ga yozadi. Agar boshq
 
 ### 6.7 Nginx vhost qo'shish (yangi subdomain)
 
-1. DNS A record yarat: `<new>.vestor.uz` → server IP.
+1. DNS A record yarat: `<new>.optoweek.uz` → server IP.
 2. Server'da:
    ```bash
    sudo nano /etc/nginx/sites-available/<filename>
@@ -419,7 +419,7 @@ Hozir `IStorageService` har doim `MinioOptions.BucketName`'ga yozadi. Agar boshq
    ```nginx
    server {
        listen 80;
-       server_name <new>.vestor.uz;
+       server_name <new>.optoweek.uz;
        location / { proxy_pass http://127.0.0.1:<port>; }
    }
    ```
@@ -427,7 +427,7 @@ Hozir `IStorageService` har doim `MinioOptions.BucketName`'ga yozadi. Agar boshq
    ```bash
    sudo ln -s /etc/nginx/sites-available/<filename> /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
-   sudo certbot --nginx -d <new>.vestor.uz
+   sudo certbot --nginx -d <new>.optoweek.uz
    ```
 
 ### 6.8 Log'larni ko'rish
@@ -495,16 +495,16 @@ EOF
 
 ### 7.3 DNS
 A records:
-- `api-opto.vestor.uz` → server IP
-- `stage-opto.vestor.uz` → server IP
-- `files.vestor.uz` → server IP
+- `api.optoweek.uz` → server IP
+- `stage-api.optoweek.uz` → server IP
+- `files.optoweek.uz` → server IP
 
 ### 7.4 Nginx
 Vhostlarni yarat (`prod_vendly_backend`, `stage_vendly_backend`, `minio_vendly`), keyin:
 ```bash
-sudo certbot --nginx -d api-opto.vestor.uz
-sudo certbot --nginx -d stage-opto.vestor.uz
-sudo certbot --nginx -d files.vestor.uz
+sudo certbot --nginx -d api.optoweek.uz
+sudo certbot --nginx -d stage-api.optoweek.uz
+sudo certbot --nginx -d files.optoweek.uz
 ```
 
 `minio_vendly` vhost'ini section 4.1'dagi to'liq kontent bilan almashtir.
@@ -613,7 +613,7 @@ DNS o'zgargan bo'lsa, A record'ni tekshir.
 - [x] UFW faqat: 22, 80, 443, 150, 151 + Docker bridge → 5432
 - [x] MinIO portlari faqat `127.0.0.1` ga bound
 - [x] Postgres faqat host loopback + Docker bridge'lardan reachable
-- [x] HTTPS hamma public domenlarda (`api-opto`, `stage-opto`, `files`)
+- [x] HTTPS hamma public domenlarda (`api.optoweek.uz`, `stage-api.optoweek.uz`, `files.optoweek.uz`)
 - [x] MinIO bucket policy `download` (read-only public), **NOT** `public` (anonymous write blocked)
 - [x] `.env` chmod 600
 - [x] GitHub secrets'da SSH key, GH_TOKEN
@@ -656,7 +656,7 @@ DNS o'zgargan bo'lsa, A record'ni tekshir.
 
 - **Repo:** `https://github.com/vendly-team/vendly`
 - **Server:** `opto@95.182.118.55` (SSH key bilan)
-- **MinIO admin:** `https://files.vestor.uz/console/` — `vendlyadmin` / [secret in ci-cd.yml]
+- **MinIO admin:** `https://files.optoweek.uz/console/` — `vendlyadmin` / [secret in ci-cd.yml]
 - **Seq prod:** `http://95.182.118.55:8082` — `admin` / `Vendly@SeqProd2026!`
 - **Seq stage:** `http://95.182.118.55:8083` — `admin` / `Vendly@SeqStage2026!`
 
@@ -666,5 +666,5 @@ DNS o'zgargan bo'lsa, A record'ni tekshir.
 
 ---
 
-**Oxirgi yangilanish:** 2026-05-02
-**Hujjat versiyasi:** 1.0
+**Oxirgi yangilanish:** 2026-06-22 (domenlar `vestor.uz` → `optoweek.uz` ga ko'chirildi)
+**Hujjat versiyasi:** 1.1
