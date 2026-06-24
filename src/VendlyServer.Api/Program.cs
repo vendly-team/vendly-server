@@ -61,6 +61,11 @@ var hangfireUser = app.Configuration["Hangfire:Dashboard:Username"]
 var hangfirePwd = app.Configuration["Hangfire:Dashboard:Password"]
     ?? throw new InvalidOperationException("Hangfire:Dashboard:Password is not configured.");
 
+if (string.IsNullOrWhiteSpace(hangfireUser))
+    throw new InvalidOperationException("Hangfire:Dashboard:Username must not be empty. Set it via the Hangfire__Dashboard__Username environment variable.");
+if (string.IsNullOrWhiteSpace(hangfirePwd))
+    throw new InvalidOperationException("Hangfire:Dashboard:Password must not be empty. Set it via the Hangfire__Dashboard__Password environment variable.");
+
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = new[] { new HangfireAuthorizationFilter(hangfireUser, hangfirePwd) }
