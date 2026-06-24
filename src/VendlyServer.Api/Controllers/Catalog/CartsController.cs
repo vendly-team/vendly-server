@@ -26,7 +26,7 @@ public class CartsController(ICartService cartService) : AuthorizedController
         return result.IsSuccess ? Results.Ok(result.Data) : result.ToProblemDetails();
     }
 
-    /// <summary>Update cart item quantity.</summary>
+    /// <summary>Update cart item quantity. Sending Qty = 0 soft-deletes the item (equivalent to DELETE /items/{id}).</summary>
     [HttpPut("items/{id:long}")]
     public async Task<IResult> UpdateItemAsync(
         long id,
