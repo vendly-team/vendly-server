@@ -376,6 +376,8 @@ public class ProductService(
         var existingVariants = product.Variants.ToList();
         var usedVariantIds = new HashSet<long>();
 
+        await using var tx = await dbContext.Database.BeginTransactionAsync(ct);
+
         foreach (var combo in combinations)
         {
             var comboIds = combo.Select(o => o.Id).OrderBy(x => x).ToList();
@@ -421,6 +423,7 @@ public class ProductService(
             v.IsDeleted = true;
 
         await dbContext.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return Result.Success();
     }
 
