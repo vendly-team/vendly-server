@@ -170,6 +170,8 @@ public class SmartupSyncService(
 
     // ── Products ──────────────────────────────────────────────────────────
 
+    private const int MaxSyncPages = 500;
+
     private async Task<(int created, int updated, int errors, List<object> details)> SyncProductsAsync(
         List<SmartupCategoryItem> categories,
         Dictionary<string, long> categoryIdMap,
@@ -209,7 +211,22 @@ public class SmartupSyncService(
                 }
 
                 var envelope = call.Result.Data!;
-                pageCount = envelope.GetPageCount();
+
+                if (page == 1)
+                {
+                    var rawPageCount = envelope.GetPageCount();
+                    if (rawPageCount > MaxSyncPages)
+                    {
+                        logger.LogWarning(
+                            "Smartup Sync [{LogId}]: category {TypeId} reports {Pages} pages — capping at {Max}",
+                            logId, cat.ProductTypeId, rawPageCount, MaxSyncPages);
+                        pageCount = MaxSyncPages;
+                    }
+                    else
+                    {
+                        pageCount = rawPageCount;
+                    }
+                }
 
                 var (c, u) = await UpsertProductsAsync(envelope.Products, categoryId, cancellationToken);
                 catCreated += c;
