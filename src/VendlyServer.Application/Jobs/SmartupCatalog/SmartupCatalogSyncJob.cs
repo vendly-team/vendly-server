@@ -1,8 +1,10 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using VendlyServer.Application.Services.SmartupSync;
 
 namespace VendlyServer.Application.Jobs.SmartupCatalog;
 
+[DisableConcurrentExecution(timeoutInSeconds: 0)]
 public class SmartupCatalogSyncJob(
     ISmartupSyncService smartupSyncService,
     ILogger<SmartupCatalogSyncJob> logger) : ISmartupCatalogSyncJob
