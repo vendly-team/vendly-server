@@ -88,6 +88,16 @@ public class CategoryServiceTests : IDisposable
         Assert.Equal(CategoryErrors.NotFound, result.Error);
     }
 
+    [Fact]
+    public async Task GetById_ReturnsNotFound_WhenInactive()
+    {
+        // Category 2 (Clothing) exists but IsActive = false — should not be visible via public GetById
+        var result = await _service.GetByIdAsync(2);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(CategoryErrors.NotFound, result.Error);
+    }
+
     // ── AddAsync ──────────────────────────────────────────────────────────────
 
     [Fact]
