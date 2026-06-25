@@ -1,3 +1,4 @@
+using System.Security.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,9 +14,12 @@ public class GlobalExceptionHandlerMiddleware(ILogger<GlobalExceptionHandlerMidd
     {
         logger.LogError(exception, "Unhandled exception");
 
+        // AuthenticationException is thrown by AuthorizedController when required JWT claims are missing.
+        // UnauthorizedAccessException is intentionally excluded here: it is also raised by I/O APIs on
+        // file system permission errors, so mapping it to 401 would mislead clients and hide 5xx failures.
         var (status, title) = exception switch
         {
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+            AuthenticationException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
         };
 
