@@ -13,11 +13,7 @@ public class GlobalExceptionHandlerMiddleware(ILogger<GlobalExceptionHandlerMidd
     {
         logger.LogError(exception, "Unhandled exception");
 
-        var (status, title) = exception switch
-        {
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
-            _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
-        };
+        var (status, title) = (StatusCodes.Status500InternalServerError, "Internal Server Error");
 
         var problemDetails = new ProblemDetails { Title = title, Status = status };
 
