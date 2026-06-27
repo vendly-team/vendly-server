@@ -35,10 +35,20 @@ public class CheckoutService(
             .SingleOrDefaultAsync(cancellationToken);
 
         if (order is null) return CheckoutErrors.OrderNotFound;
-        if (order.Status != OrderStatus.Draft) return CheckoutErrors.NotDraft;
 
-        // Order Draft bo'lib, ammo Payment yozuvi qolib ketgan bo'lishi mumkin (avvalgi sinov, manual reset).
-        // Yangi Payment yaratish o'rniga mavjudini yangilaymiz — unique constraint (ix_payments_order_id) buzilmaydi.
+        // To'lov urinishiga ruxsat bersak bo'ladigan holatlar:
+        //   1) Draft — birinchi marta to'lov urinishi
+        //   2) New + Payment Pending/Failed — user orqaga qaytib qayta urinmoqchi (webhook hali kelmagan
+        //      yoki Click "user navigated away" webhook'ini umuman jo'natmaydi).
+        // Paid bo'lsa — alohida xato (idempotency, user ikkinchi marta to'lash kerakmas).
+        if (order.Payment?.Status == PaymentStatus.Paid || order.Status == OrderStatus.Payed)
+            return CheckoutErrors.AlreadyPaid;
+
+        var allowed = order.Status == OrderStatus.Draft || order.Status == OrderStatus.New;
+        if (!allowed) return CheckoutErrors.NotPayable;
+
+        // Payment yozuvi qolgan bo'lsa, yangisini yaratmasdan qayta tiklaymiz —
+        // unique constraint (ix_payments_order_id) buzilmaydi.
 
         string paymentUrl;
         if (provider == PaymentProvider.Hamkor)
