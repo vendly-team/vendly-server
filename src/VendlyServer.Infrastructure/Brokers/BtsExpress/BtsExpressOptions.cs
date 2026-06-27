@@ -18,4 +18,8 @@ public class BtsExpressOptions
 
     // Optional shared secret to validate the BTS status webhook (empty = accept all).
     public string WebhookSecretToken { get; set; } = string.Empty;
+
+    // Test/stage override: agar belgilangan bo'lsa (>0), BTS calculator chaqirilmaydi va shu narx qaytariladi.
+    // Production'da NULL/0 qoldiring → real BTS API ishlatiladi.
+    public decimal? FixedQuoteAmount { get; set; }
 }
