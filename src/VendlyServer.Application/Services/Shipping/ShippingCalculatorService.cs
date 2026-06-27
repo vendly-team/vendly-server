@@ -23,6 +23,11 @@ public class ShippingCalculatorService(
         // Manzilda BTS filial kodi bo'lsa filialga, bo'lmasa kuryer orqali yetkaziladi.
         var dropoffType = string.IsNullOrWhiteSpace(request.ReceiverBranchCode) ? "courier" : "branch";
 
+        // Test/stage override — agar config'da FixedQuoteAmount belgilangan bo'lsa,
+        // BTS chaqirilmasdan o'sha narx qaytariladi. Production'da bu NULL bo'ladi.
+        if (_options.FixedQuoteAmount is > 0)
+            return new ShippingQuoteResponse(_options.FixedQuoteAmount.Value, dropoffType, Currency);
+
         var calcRequest = new BtsCalculateRequest
         {
             SenderCityCode = _options.SenderCityCode,
