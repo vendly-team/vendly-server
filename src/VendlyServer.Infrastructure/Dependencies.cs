@@ -94,6 +94,7 @@ public static class Dependencies
 
     // Payme + Click: strategiya-asosli to'lov provider'lari (Scoped — DbContext ishlatadi).
     // Hamkor alohida (ConfigureHamkor) — u outbound broker, Singleton.
+    // Click Merchant API v2 broker (status polling/refund) — Singleton, IHttpClientFactory ishlatadi.
     private static IServiceCollection ConfigurePayments(this IServiceCollection services)
     {
         services.ConfigureOptions<PaymentsOptionsSetup>();
@@ -102,6 +103,9 @@ public static class Dependencies
 
         services.AddScoped<IPaymentProvider, PaymeProvider>();
         services.AddScoped<IPaymentProvider, ClickProvider>();
+
+        services.AddHttpClient("Click");
+        services.AddSingleton<IClickBroker, ClickBroker>();
 
         return services;
     }
