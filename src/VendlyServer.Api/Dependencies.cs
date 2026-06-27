@@ -181,6 +181,6 @@ public static class Dependencies
             Console.WriteLine("No pending migrations found.");
         }
 
-        await dbContext.SeedAsync(app.Environment.IsDevelopment());
+        await dbContext.SeedAsync(app.Environment.IsDevelopment() || app.Environment.IsStaging());
     }
 }
