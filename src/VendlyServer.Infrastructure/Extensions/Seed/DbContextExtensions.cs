@@ -72,11 +72,30 @@ public static class DbContextExtensions
         private async Task SeedTestPaymentProductAsync()
         {
             const string testProductName = "Test Payment Product (1000 so'm)";
-            var exists = await dbContext.Products.AnyAsync(p => p.Name == testProductName);
+            // Name — MultiLanguageField (owned). EF translate qila olishi uchun Uz fieldi orqali tekshiramiz.
+            // Implicit operator (string → MultiLanguageField) Uz/Ru/En/Cyrl ga bir xil string yozadi.
+            var exists = await dbContext.Products.AnyAsync(p => p.Name.Uz == testProductName);
             if (exists) return;
 
-            var category = await dbContext.Categories.FirstOrDefaultAsync(c => c.Slug == "telefonlar");
-            if (category is null) return;
+            // Category tanlash tartibi:
+            //   1) "telefonlar" slug (fresh DB'da bo'ladi)
+            //   2) Mavjud bo'lgan eng birinchi active category (Smartup sync'idan kelgani)
+            //   3) Hech qaysi bo'lmasa — alohida "Test Products" category yaratamiz
+            var category =
+                await dbContext.Categories.FirstOrDefaultAsync(c => c.Slug == "telefonlar" && !c.IsDeleted)
+                ?? await dbContext.Categories.Where(c => c.IsActive && !c.IsDeleted).FirstOrDefaultAsync();
+
+            if (category is null)
+            {
+                category = new Category
+                {
+                    Name = "Test Products",
+                    Slug = "test-products",
+                    IsActive = true,
+                };
+                dbContext.Categories.Add(category);
+                await dbContext.SaveChangesAsync();
+            }
 
             var product = new Product
             {
