@@ -109,11 +109,15 @@ public static class DbContextExtensions
             dbContext.Products.Add(product);
             await dbContext.SaveChangesAsync();
 
+            // DIQQAT: ProductPricingService variant.Price'ni USD deb qabul qiladi va
+            // CBU kursi orqali so'mga aylantiradi (PricingContext.CalculateSoumPrice).
+            // Test uchun so'mda ~1000-1500 chiqishi uchun 0.08 USD yozamiz (≈1000 so'm bugungi kursda).
+            // Kurs o'zgarsa narx bir oz farq qiladi, lekin baribir Click test uchun yetarli darajada arzon.
             var variant = new ProductVariant
             {
                 ProductId = product.Id,
                 Name = "Default",
-                Price = 1_000m,
+                Price = 0.08m, // USD — ≈1000 so'm
                 Quantity = 9999,
                 IsActive = true,
             };
