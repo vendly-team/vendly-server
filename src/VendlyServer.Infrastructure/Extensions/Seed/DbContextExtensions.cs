@@ -12,7 +12,7 @@ public static class DbContextExtensions
 {
     extension(AppDbContext dbContext)
     {
-        public async Task SeedAsync(bool isDevelopment)
+        public async Task SeedAsync(bool seedSampleCatalog)
         {
             IPasswordHasher passwordHasher = new PasswordHasher();
 
@@ -20,8 +20,11 @@ public static class DbContextExtensions
             await dbContext.SeedBtsRefAsync();
             await dbContext.SeedReturnReasonsAsync();
 
-            if (isDevelopment)
+            if (seedSampleCatalog)
+            {
                 await dbContext.SeedCatalogAsync();
+                await dbContext.SeedTestPaymentProductAsync();
+            }
         }
 
         private async Task SeedCatalogAsync()
@@ -61,6 +64,54 @@ public static class DbContextExtensions
             };
 
             dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Test to'lov uchun arzon mahsulot (Click/Hamkor sandbox sinovlari uchun).
+        // O'lchamlari to'liq — BTS yetkazib berish narxi hisoblana oladi.
+        private async Task SeedTestPaymentProductAsync()
+        {
+            const string testProductName = "Test Payment Product (1000 so'm)";
+            var exists = await dbContext.Products.AnyAsync(p => p.Name == testProductName);
+            if (exists) return;
+
+            var category = await dbContext.Categories.FirstOrDefaultAsync(c => c.Slug == "telefonlar");
+            if (category is null) return;
+
+            var product = new Product
+            {
+                CategoryId = category.Id,
+                Name = testProductName,
+                Description = "Click/Hamkor to'lovni sinash uchun arzon test mahsuloti.",
+                SyncSource = SyncSource.Manual,
+                IsActive = true,
+            };
+
+            dbContext.Products.Add(product);
+            await dbContext.SaveChangesAsync();
+
+            var variant = new ProductVariant
+            {
+                ProductId = product.Id,
+                Name = "Default",
+                Price = 1_000m,
+                Quantity = 9999,
+                IsActive = true,
+            };
+
+            dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
+
+            var measurement = new ProductMeasurement
+            {
+                ProductVariantId = variant.Id,
+                WeightKg = 0.5m,
+                LengthCm = 20m,
+                WidthCm = 15m,
+                HeightCm = 5m,
+            };
+
+            dbContext.ProductMeasurements.Add(measurement);
             await dbContext.SaveChangesAsync();
         }
 
