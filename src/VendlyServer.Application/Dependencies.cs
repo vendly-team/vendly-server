@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Minio;
 using VendlyServer.Application.Jobs.Auth;
 using VendlyServer.Application.Jobs.BtsCatalog;
+using VendlyServer.Application.Jobs.Payments;
 using VendlyServer.Application.Jobs.SmartupCatalog;
 using VendlyServer.Application.Services.SmartupSync;
 using VendlyServer.Application.Services.Auth;
@@ -73,6 +74,7 @@ public static class Dependencies
         services.AddScoped<ICleanExpiredRefreshTokensJob, CleanExpiredRefreshTokensJob>();
         services.AddScoped<ISmartupSyncService, SmartupSyncService>();
         services.AddScoped<ISmartupCatalogSyncJob, SmartupCatalogSyncJob>();
+        services.AddScoped<IClickStatusPollingJob, ClickStatusPollingJob>();
 
         return services;
     }

@@ -12,7 +12,7 @@ public static class DbContextExtensions
 {
     extension(AppDbContext dbContext)
     {
-        public async Task SeedAsync(bool isDevelopment)
+        public async Task SeedAsync(bool seedSampleCatalog)
         {
             IPasswordHasher passwordHasher = new PasswordHasher();
 
@@ -21,8 +21,11 @@ public static class DbContextExtensions
             await dbContext.SeedReturnReasonsAsync();
             await dbContext.SeedHeroBannersAsync();
 
-            if (isDevelopment)
+            if (seedSampleCatalog)
+            {
                 await dbContext.SeedCatalogAsync();
+                await dbContext.SeedTestPaymentProductAsync();
+            }
         }
 
         private async Task SeedCatalogAsync()
@@ -62,6 +65,77 @@ public static class DbContextExtensions
             };
 
             dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Test to'lov uchun arzon mahsulot (Click/Hamkor sandbox sinovlari uchun).
+        // O'lchamlari to'liq — BTS yetkazib berish narxi hisoblana oladi.
+        private async Task SeedTestPaymentProductAsync()
+        {
+            const string testProductName = "Test Payment Product (1000 so'm)";
+            // Name — MultiLanguageField (owned). EF translate qila olishi uchun Uz fieldi orqali tekshiramiz.
+            // Implicit operator (string → MultiLanguageField) Uz/Ru/En/Cyrl ga bir xil string yozadi.
+            var exists = await dbContext.Products.AnyAsync(p => p.Name.Uz == testProductName);
+            if (exists) return;
+
+            // Category tanlash tartibi:
+            //   1) "telefonlar" slug (fresh DB'da bo'ladi)
+            //   2) Mavjud bo'lgan eng birinchi active category (Smartup sync'idan kelgani)
+            //   3) Hech qaysi bo'lmasa — alohida "Test Products" category yaratamiz
+            var category =
+                await dbContext.Categories.FirstOrDefaultAsync(c => c.Slug == "telefonlar" && !c.IsDeleted)
+                ?? await dbContext.Categories.Where(c => c.IsActive && !c.IsDeleted).FirstOrDefaultAsync();
+
+            if (category is null)
+            {
+                category = new Category
+                {
+                    Name = "Test Products",
+                    Slug = "test-products",
+                    IsActive = true,
+                };
+                dbContext.Categories.Add(category);
+                await dbContext.SaveChangesAsync();
+            }
+
+            var product = new Product
+            {
+                CategoryId = category.Id,
+                Name = testProductName,
+                Description = "Click/Hamkor to'lovni sinash uchun arzon test mahsuloti.",
+                SyncSource = SyncSource.Manual,
+                IsActive = true,
+            };
+
+            dbContext.Products.Add(product);
+            await dbContext.SaveChangesAsync();
+
+            // DIQQAT: ProductPricingService variant.Price'ni USD deb qabul qiladi va
+            // CBU kursi orqali so'mga aylantiradi (PricingContext.CalculateSoumPrice).
+            // Test uchun so'mda ~1000-1500 chiqishi uchun 0.08 USD yozamiz (≈1000 so'm bugungi kursda).
+            // Kurs o'zgarsa narx bir oz farq qiladi, lekin baribir Click test uchun yetarli darajada arzon.
+            var variant = new ProductVariant
+            {
+                ProductId = product.Id,
+                Name = "Default",
+                Price = 0.08m, // USD — ≈1000 so'm
+                Quantity = 9999,
+                IsActive = true,
+            };
+
+            dbContext.ProductVariants.Add(variant);
+            await dbContext.SaveChangesAsync();
+
+            var measurement = new ProductMeasurement
+            {
+                ProductVariantId = variant.Id,
+                WeightKg = 0.5m,
+                LengthCm = 20m,
+                WidthCm = 15m,
+                HeightCm = 5m,
+            };
+
+            dbContext.ProductMeasurements.Add(measurement);
             await dbContext.SaveChangesAsync();
         }
 

@@ -30,11 +30,25 @@ public class CheckoutService(
     {
         var order = await dbContext.Orders
             .Include(o => o.Items.Where(i => !i.IsDeleted))
+            .Include(o => o.Payment)
             .Where(o => o.Id == orderId && o.UserId == userId && !o.IsDeleted)
             .SingleOrDefaultAsync(cancellationToken);
 
         if (order is null) return CheckoutErrors.OrderNotFound;
-        if (order.Status != OrderStatus.Draft) return CheckoutErrors.NotDraft;
+
+        // To'lov urinishiga ruxsat bersak bo'ladigan holatlar:
+        //   1) Draft — birinchi marta to'lov urinishi
+        //   2) New + Payment Pending/Failed — user orqaga qaytib qayta urinmoqchi (webhook hali kelmagan
+        //      yoki Click "user navigated away" webhook'ini umuman jo'natmaydi).
+        // Paid bo'lsa — alohida xato (idempotency, user ikkinchi marta to'lash kerakmas).
+        if (order.Payment?.Status == PaymentStatus.Paid || order.Status == OrderStatus.Payed)
+            return CheckoutErrors.AlreadyPaid;
+
+        var allowed = order.Status == OrderStatus.Draft || order.Status == OrderStatus.New;
+        if (!allowed) return CheckoutErrors.NotPayable;
+
+        // Payment yozuvi qolgan bo'lsa, yangisini yaratmasdan qayta tiklaymiz —
+        // unique constraint (ix_payments_order_id) buzilmaydi.
 
         string paymentUrl;
         if (provider == PaymentProvider.Hamkor)
@@ -58,12 +72,27 @@ public class CheckoutService(
         }
 
         order.Status = OrderStatus.New;
-        order.Payment = new Payment
+
+        if (order.Payment is null)
         {
-            Provider = provider,
-            Status = PaymentStatus.Pending,
-            Amount = order.TotalAmount,
-        };
+            order.Payment = new Payment
+            {
+                Provider = provider,
+                Status = PaymentStatus.Pending,
+                Amount = order.TotalAmount,
+            };
+        }
+        else
+        {
+            // Mavjud Payment'ni qayta tiklaymiz: yangi provider, narx, Pending holatga qaytarish.
+            order.Payment.Provider = provider;
+            order.Payment.Amount = order.TotalAmount;
+            order.Payment.Status = PaymentStatus.Pending;
+            order.Payment.TransactionId = null;
+            order.Payment.PaidAt = null;
+            order.Payment.ProviderResponse = null;
+        }
+
         order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.New });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -129,13 +158,17 @@ public class CheckoutService(
             return CheckoutErrors.OrderNotFound;
         }
 
-        order.Payment ??= new Payment
+        if (order.Payment is null)
         {
-            OrderId = order.Id,
-            Provider = PaymentProvider.Hamkor,
-            Status = PaymentStatus.Pending,
-            Amount = order.TotalAmount
-        };
+            order.Payment = new Payment
+            {
+                OrderId = order.Id,
+                Provider = PaymentProvider.Hamkor,
+                Status = PaymentStatus.Pending,
+                Amount = order.TotalAmount,
+                Order = order, // PaymentStatusTransition payment.Order ga murojaat qiladi
+            };
+        }
 
         // Idempotent — the bank may deliver the callback more than once.
         if (order.Payment.Status == PaymentStatus.Paid)
@@ -147,21 +180,14 @@ public class CheckoutService(
 
         if (state is HamkorPaymentState.Confirmed or HamkorPaymentState.Payed)
         {
-            order.Payment.Status = PaymentStatus.Paid;
-            order.Payment.PaidAt = DateTime.UtcNow;
-            order.Status = OrderStatus.Payed;
-            order.StatusHistory.Add(new OrderStatusHistory
-            {
-                Status = OrderStatus.Payed,
-                Note = "Payment confirmed via Hamkorbank"
-            });
-
-            // Order o'z cartiga ega (allaqachon checked-out) — to'lovdan keyin u faqat status bo'yicha
-            // bloklanadi. Foydalanuvchining keyingi open carti talab bo'yicha yangidan yaratiladi.
+            // PaymentStatusTransition orqali — Click/Payme bilan yagona oqim.
+            // Hamkor TransactionId yo'q (faqat ext_id), shu sabab payment.TransactionId = orderNumber.
+            PaymentStatusTransition.MarkPaid(order.Payment, callback.ExtId, "Payment confirmed via Hamkorbank");
         }
         else if (state is HamkorPaymentState.Canceled)
         {
-            order.Payment.Status = PaymentStatus.Failed;
+            // PaymentStatusTransition orqali — Payment Failed bo'lishi va Order Draft'ga qaytishi.
+            PaymentStatusTransition.MarkFailed(order.Payment);
         }
         else
         {

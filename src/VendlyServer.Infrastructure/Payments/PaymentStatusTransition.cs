@@ -26,10 +26,26 @@ public static class PaymentStatusTransition
         });
     }
 
-    // To'lov bekor/muvaffaqiyatsiz: faqat Payment -> Failed. Order tegilmaydi (qayta urinishga ochiq).
+    // To'lov bekor/muvaffaqiyatsiz: Payment -> Failed, Order -> Draft (qayta urinish uchun ochiq).
+    // payment.Order yuklangan bo'lishi shart.
     public static void MarkFailed(Payment payment)
     {
         if (payment.Status == PaymentStatus.Paid) return;
+
         payment.Status = PaymentStatus.Failed;
+
+        // Faqat New holatidagi orderni Draft'ga qaytaramiz — bu to'lov urinishi davomidagi typik holat.
+        // Payed/Shipped/Cancelled holatlarga tegmaymiz (allaqachon yakunlangan oqimlar).
+        // Draft'ga qaytsa, foydalanuvchi /payment'ni qayta chaqirishi mumkin (o'sha yoki boshqa
+        // provider bilan). InitiatePaymentAsync mavjud Payment'ni qayta tiklab ishlatadi.
+        var order = payment.Order;
+        if (order.Status != OrderStatus.New) return;
+
+        order.Status = OrderStatus.Draft;
+        order.StatusHistory.Add(new OrderStatusHistory
+        {
+            Status = OrderStatus.Draft,
+            Note = "Payment failed — reverted to draft for retry",
+        });
     }
 }
