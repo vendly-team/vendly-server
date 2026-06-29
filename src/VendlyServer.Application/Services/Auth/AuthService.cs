@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using VendlyServer.Application.Services.Auth.Contracts;
@@ -19,14 +18,13 @@ public class AuthService(
     IPasswordHasher passwordHasher,
     IJwtProvider jwtProvider,
     IOptions<JwtOptions> jwtOptions,
-    IMemoryCache cache,
     ISmsService smsService,
     IHostEnvironment environment) : IAuthService
 {
     private const int OtpTtlMinutes = 5;
     private const int MaxOtpAttempts = 5;
+    private const int MaxResendCount = 3;
 
-    // Dev/Stage'da OTP doim 555555 va real SMS yuborilmaydi.
     private bool IsFixedCodeEnvironment => environment.IsDevelopment() || environment.IsStaging();
 
 
@@ -45,18 +43,28 @@ public class AuthService(
         if (!user.IsVerified)
         {
             var code = GenerateOtpCode();
-            var send = await SendOtpAsync(user.Phone, code, cancellationToken);
-            if (send.IsFailure) return send.Error;
+            var smsResult = await SendOtpAsync(user.Phone, code, cancellationToken);
+            if (smsResult.IsFailure) return smsResult.Error;
 
-            cache.Set(OtpKey(user.Phone), new OtpEntry
+            var existingOtp = await dbContext.Otps
+                .SingleOrDefaultAsync(o => o.Phone == user.Phone && o.Type == OtpType.Login, cancellationToken);
+
+            if (existingOtp is not null)
+                dbContext.Otps.Remove(existingOtp);
+
+            var otp = new Otp
             {
-                Code = code,
-                FirstName = user.FirstName,
-                LastName = user.LastName ?? string.Empty,
                 Phone = user.Phone,
-                Email = user.Email,
-                PasswordHash = user.PasswordHash,
-            }, TimeSpan.FromMinutes(OtpTtlMinutes));
+                Code = code,
+                Type = OtpType.Login,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(OtpTtlMinutes),
+                ResendCount = 0,
+                Attempts = 0,
+                SmsMessageId = smsResult.Data
+            };
+
+            dbContext.Otps.Add(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             var otpResponse = new RegisterResponse(user.Phone, OtpTtlMinutes * 60, "OTP code sent.");
             return new LoginResultResponse(Otp: otpResponse);
@@ -76,59 +84,70 @@ public class AuthService(
 
         var code = GenerateOtpCode();
 
-        // OTP'ni yuboramiz (prod). Yuborib bo'lmasa — ro'yxatdan o'tkazmaymiz.
-        var send = await SendOtpAsync(request.Phone, code, cancellationToken);
-        if (send.IsFailure) return send.Error;
+        var smsResult = await SendOtpAsync(request.Phone, code, cancellationToken);
+        if (smsResult.IsFailure) return smsResult.Error;
 
-        // User hali yaratilmaydi — pending registration cache'da 5 daqiqa turadi.
-        cache.Set(OtpKey(request.Phone), new OtpEntry
+        var user = new User
         {
-            Code         = code,
             FirstName    = request.FirstName,
             LastName     = request.LastName,
             Phone        = request.Phone,
             Email        = request.Email,
             PasswordHash = passwordHasher.Hash(request.Password),
-        }, TimeSpan.FromMinutes(OtpTtlMinutes));
+            IsVerified   = false,
+            Role         = UserRole.Customer,
+        };
+
+        var otp = new Otp
+        {
+            Phone = request.Phone,
+            Code = code,
+            Type = OtpType.Registration,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(OtpTtlMinutes),
+            ResendCount = 0,
+            Attempts = 0,
+            SmsMessageId = smsResult.Data
+        };
+
+        dbContext.Users.Add(user);
+        dbContext.Otps.Add(otp);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return new RegisterResponse(request.Phone, OtpTtlMinutes * 60, "OTP code sent.");
     }
 
     public async Task<Result<AuthResponse>> VerifyRegistrationOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
     {
-        var key = OtpKey(request.Phone);
+        var user = await dbContext.Users
+            .SingleOrDefaultAsync(u => u.Phone == request.Phone && !u.IsDeleted && !u.IsVerified, cancellationToken);
 
-        if (!cache.TryGetValue(key, out OtpEntry? entry) || entry is null)
+        if (user is null)
+            return AuthErrors.UserNotFound;
+
+        var otp = await dbContext.Otps
+            .SingleOrDefaultAsync(o => o.Phone == request.Phone && o.Type == OtpType.Registration, cancellationToken);
+
+        if (otp is null)
             return AuthErrors.OtpExpired;
 
-        if (entry.Code != request.Code)
+        if (otp.Code != request.Code)
         {
-            entry.Attempts++;
-            if (entry.Attempts >= MaxOtpAttempts)
-                cache.Remove(key);
+            otp.Attempts++;
+            if (otp.Attempts >= MaxOtpAttempts)
+                dbContext.Otps.Remove(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
             return AuthErrors.OtpInvalid;
         }
 
-        cache.Remove(key);
-
-        var exists = await dbContext.Users
-            .AsNoTracking()
-            .AnyAsync(u => u.Phone == entry.Phone && !u.IsDeleted, cancellationToken);
-
-        if (exists) return AuthErrors.UserAlreadyExists;
-
-        var user = new User
+        if (otp.ExpiresAt < DateTime.UtcNow)
         {
-            FirstName    = entry.FirstName,
-            LastName     = entry.LastName,
-            Phone        = entry.Phone,
-            Email        = entry.Email,
-            PasswordHash = entry.PasswordHash,
-            Role         = UserRole.Customer,
-            IsVerified   = true
-        };
+            dbContext.Otps.Remove(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return AuthErrors.OtpExpired;
+        }
 
-        dbContext.Users.Add(user);
+        user.IsVerified = true;
+        dbContext.Otps.Remove(otp);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await CreateAuthResponseAsync(user, cancellationToken);
@@ -136,28 +155,40 @@ public class AuthService(
 
     public async Task<Result<AuthResponse>> VerifyLoginOtpAsync(VerifyOtpRequest request, CancellationToken cancellationToken = default)
     {
-        var key = OtpKey(request.Phone);
+        var otp = await dbContext.Otps
+            .SingleOrDefaultAsync(o => o.Phone == request.Phone && o.Type == OtpType.Login, cancellationToken);
 
-        if (!cache.TryGetValue(key, out OtpEntry? entry) || entry is null)
+        if (otp is null)
             return AuthErrors.OtpExpired;
 
-        if (entry.Code != request.Code)
+        if (otp.Code != request.Code)
         {
-            entry.Attempts++;
-            if (entry.Attempts >= MaxOtpAttempts)
-                cache.Remove(key);
+            otp.Attempts++;
+            if (otp.Attempts >= MaxOtpAttempts)
+                dbContext.Otps.Remove(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
             return AuthErrors.OtpInvalid;
         }
 
-        cache.Remove(key);
+        if (otp.ExpiresAt < DateTime.UtcNow)
+        {
+            dbContext.Otps.Remove(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return AuthErrors.OtpExpired;
+        }
 
         var user = await dbContext.Users
             .SingleOrDefaultAsync(u => u.Phone == request.Phone && !u.IsDeleted, cancellationToken);
 
         if (user is null)
+        {
+            dbContext.Otps.Remove(otp);
+            await dbContext.SaveChangesAsync(cancellationToken);
             return AuthErrors.UserNotFound;
+        }
 
         user.IsVerified = true;
+        dbContext.Otps.Remove(otp);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await CreateAuthResponseAsync(user, cancellationToken);
@@ -165,25 +196,32 @@ public class AuthService(
 
     public async Task<Result<RegisterResponse>> ResendOtpAsync(ResendOtpRequest request, CancellationToken cancellationToken = default)
     {
-        var key = OtpKey(request.Phone);
+        var user = await dbContext.Users
+            .SingleOrDefaultAsync(u => u.Phone == request.Phone && !u.IsDeleted && !u.IsVerified, cancellationToken);
 
-        if (!cache.TryGetValue(key, out OtpEntry? entry) || entry is null)
+        if (user is null)
+            return AuthErrors.UserNotFound;
+
+        var otp = await dbContext.Otps
+            .SingleOrDefaultAsync(o => o.Phone == request.Phone && o.Type == OtpType.Registration, cancellationToken);
+
+        if (otp is null)
             return AuthErrors.OtpExpired;
+
+        if (otp.ResendCount >= MaxResendCount)
+            return AuthErrors.OtpResendLimitExceeded;
 
         var code = GenerateOtpCode();
 
-        var send = await SendOtpAsync(request.Phone, code, cancellationToken);
-        if (send.IsFailure) return send.Error;
+        var smsResult = await SendOtpAsync(request.Phone, code, cancellationToken);
+        if (smsResult.IsFailure) return smsResult.Error;
 
-        cache.Set(key, new OtpEntry
-        {
-            Code         = code,
-            FirstName    = entry.FirstName,
-            LastName     = entry.LastName,
-            Phone        = entry.Phone,
-            Email        = entry.Email,
-            PasswordHash = entry.PasswordHash,
-        }, TimeSpan.FromMinutes(OtpTtlMinutes));
+        otp.Code = code;
+        otp.ExpiresAt = DateTime.UtcNow.AddMinutes(OtpTtlMinutes);
+        otp.ResendCount++;
+        otp.Attempts = 0;
+        otp.SmsMessageId = smsResult.Data;
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return new RegisterResponse(request.Phone, OtpTtlMinutes * 60, "OTP code resent.");
     }
@@ -281,30 +319,15 @@ public class AuthService(
             ? "555555"
             : RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
 
-    private async Task<Result> SendOtpAsync(string phone, string code, CancellationToken cancellationToken)
+    private async Task<Result<long?>> SendOtpAsync(string phone, string code, CancellationToken cancellationToken)
     {
         // Dev/Stage'da real SMS yubormaymiz — kod baribir 555555.
         if (IsFixedCodeEnvironment)
-            return Result.Success();
+            return (long?)null;
 
         var message = $"Vendly: tasdiqlash kodingiz {code}. Hech kimga bermang.";
         var result = await smsService.SendAsync(new SendSmsRequest { Phone = phone, Message = message }, cancellationToken);
-        return result.IsSuccess ? Result.Success() : result.Error;
+        return result.IsSuccess ? result.Data.Id : result.Error;
     }
 
-    // Telefonni faqat raqamlarga normallashtirib kalit yasaymiz (register/verify mos kelishi uchun).
-    private static string OtpKey(string phone) =>
-        $"otp:reg:{new string(phone.Where(char.IsDigit).ToArray())}";
-
-    // Pending registration — user OTP'ni tasdiqlamaguncha cache'da turadi (DB'ga yozilmaydi).
-    private sealed class OtpEntry
-    {
-        public required string Code { get; set; }
-        public required string FirstName { get; set; }
-        public required string LastName { get; set; }
-        public required string Phone { get; set; }
-        public string? Email { get; set; }
-        public required string PasswordHash { get; set; }
-        public int Attempts { get; set; }
-    }
 }
