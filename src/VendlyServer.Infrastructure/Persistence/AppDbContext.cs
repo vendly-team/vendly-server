@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // public
     public DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Otp> Otps { get; set; }
 
     #region Catalog
 
@@ -55,6 +56,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     
     public DbSet<Faq> Faqs { get; set; }
     public DbSet<CompanyInfo> CompanyInfos { get; set; }
+    public DbSet<HeroBanner> HeroBanners { get; set; }
 
     public DbSet<BtsWebhookEvent> BtsWebhookEvents { get; set; }
     public DbSet<NotificationLog> NotificationLogs { get; set; }
@@ -167,6 +169,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             modelBuilder.Entity<Faq>().OwnsOne(f => f.Question, nav => nav.ToJson());
             modelBuilder.Entity<Faq>().OwnsOne(f => f.Answer, nav => nav.ToJson());
             modelBuilder.Entity<CompanyInfo>().OwnsOne(c => c.OfertaUrl, nav => nav.ToJson());
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.Title, nav => nav.ToJson());
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.Subtitle, nav => nav.ToJson());
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.BadgeText, nav => nav.ToJson());
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.CtaText, nav => nav.ToJson());
         }
         else
         {
@@ -177,6 +183,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             modelBuilder.Entity<Faq>().OwnsOne(f => f.Question);
             modelBuilder.Entity<Faq>().OwnsOne(f => f.Answer);
             modelBuilder.Entity<CompanyInfo>().OwnsOne(c => c.OfertaUrl);
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.Title);
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.Subtitle);
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.BadgeText);
+            modelBuilder.Entity<HeroBanner>().OwnsOne(h => h.CtaText);
         }
 
         // === JSONB column types ===

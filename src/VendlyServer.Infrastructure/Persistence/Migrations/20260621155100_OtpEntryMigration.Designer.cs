@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VendlyServer.Infrastructure.Persistence;
@@ -12,9 +13,11 @@ using VendlyServer.Infrastructure.Persistence;
 namespace VendlyServer.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260621155100_OtpEntryMigration")]
+    partial class OtpEntryMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1877,52 +1880,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                     b.ToTable("faqs", "public");
                 });
 
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Public.HeroBanner", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CtaLink")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("cta_link");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("image_url");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_hero_banners");
-
-                    b.ToTable("hero_banners", "public");
-                });
-
             modelBuilder.Entity("VendlyServer.Domain.Entities.Public.Otp", b =>
                 {
                     b.Property<long>("Id")
@@ -3112,136 +3069,6 @@ namespace VendlyServer.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Question")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("VendlyServer.Domain.Entities.Public.HeroBanner", b =>
-                {
-                    b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "BadgeText", b1 =>
-                        {
-                            b1.Property<long>("HeroBannerId");
-
-                            b1.Property<string>("Cyrl")
-                                .HasJsonPropertyName("cyrl");
-
-                            b1.Property<string>("En")
-                                .HasJsonPropertyName("en");
-
-                            b1.Property<string>("Ru")
-                                .HasJsonPropertyName("ru");
-
-                            b1.Property<string>("Uz")
-                                .HasJsonPropertyName("uz");
-
-                            b1.HasKey("HeroBannerId");
-
-                            b1.ToTable("hero_banners", "public");
-
-                            b1
-                                .ToJson("badge_text")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("HeroBannerId")
-                                .HasConstraintName("fk_hero_banners_hero_banners_id");
-                        });
-
-                    b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "CtaText", b1 =>
-                        {
-                            b1.Property<long>("HeroBannerId");
-
-                            b1.Property<string>("Cyrl")
-                                .HasJsonPropertyName("cyrl");
-
-                            b1.Property<string>("En")
-                                .HasJsonPropertyName("en");
-
-                            b1.Property<string>("Ru")
-                                .HasJsonPropertyName("ru");
-
-                            b1.Property<string>("Uz")
-                                .HasJsonPropertyName("uz");
-
-                            b1.HasKey("HeroBannerId");
-
-                            b1.ToTable("hero_banners", "public");
-
-                            b1
-                                .ToJson("cta_text")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("HeroBannerId")
-                                .HasConstraintName("fk_hero_banners_hero_banners_id");
-                        });
-
-                    b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "Subtitle", b1 =>
-                        {
-                            b1.Property<long>("HeroBannerId");
-
-                            b1.Property<string>("Cyrl")
-                                .HasJsonPropertyName("cyrl");
-
-                            b1.Property<string>("En")
-                                .HasJsonPropertyName("en");
-
-                            b1.Property<string>("Ru")
-                                .HasJsonPropertyName("ru");
-
-                            b1.Property<string>("Uz")
-                                .HasJsonPropertyName("uz");
-
-                            b1.HasKey("HeroBannerId");
-
-                            b1.ToTable("hero_banners", "public");
-
-                            b1
-                                .ToJson("subtitle")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("HeroBannerId")
-                                .HasConstraintName("fk_hero_banners_hero_banners_id");
-                        });
-
-                    b.OwnsOne("VendlyServer.Domain.Entities.Common.MultiLanguageField", "Title", b1 =>
-                        {
-                            b1.Property<long>("HeroBannerId");
-
-                            b1.Property<string>("Cyrl")
-                                .HasJsonPropertyName("cyrl");
-
-                            b1.Property<string>("En")
-                                .HasJsonPropertyName("en");
-
-                            b1.Property<string>("Ru")
-                                .HasJsonPropertyName("ru");
-
-                            b1.Property<string>("Uz")
-                                .HasJsonPropertyName("uz");
-
-                            b1.HasKey("HeroBannerId");
-
-                            b1.ToTable("hero_banners", "public");
-
-                            b1
-                                .ToJson("title")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("HeroBannerId")
-                                .HasConstraintName("fk_hero_banners_hero_banners_id");
-                        });
-
-                    b.Navigation("BadgeText");
-
-                    b.Navigation("CtaText")
-                        .IsRequired();
-
-                    b.Navigation("Subtitle")
-                        .IsRequired();
-
-                    b.Navigation("Title")
                         .IsRequired();
                 });
 
