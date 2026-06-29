@@ -28,6 +28,7 @@ using VendlyServer.Application.Services.Analytics;
 using VendlyServer.Application.Services.SyncLogs;
 using VendlyServer.Application.Services.ReturnReasons;
 using VendlyServer.Application.Services.Faqs;
+using VendlyServer.Application.Services.HeroBanners;
 using VendlyServer.Application.Services.Sms;
 
 namespace VendlyServer.Application;
@@ -53,6 +54,7 @@ public static class Dependencies
         services.AddScoped<ICategoryPriceService, CategoryPriceService>();
         services.AddScoped<IProductPricingService, ProductPricingService>();
         services.AddScoped<ICompanyInfoService, CompanyInfoService>();
+        services.AddScoped<IHeroBannerService, HeroBannerService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICartService, CartService>();

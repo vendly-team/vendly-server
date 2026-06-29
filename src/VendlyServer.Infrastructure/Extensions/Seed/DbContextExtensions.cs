@@ -19,6 +19,7 @@ public static class DbContextExtensions
             await dbContext.SeedUsersAsync(passwordHasher);
             await dbContext.SeedBtsRefAsync();
             await dbContext.SeedReturnReasonsAsync();
+            await dbContext.SeedHeroBannersAsync();
 
             if (isDevelopment)
                 await dbContext.SeedCatalogAsync();
@@ -92,6 +93,112 @@ public static class DbContextExtensions
             await dbContext.SaveChangesAsync();
 
             dbContext.BtsCities.AddRange(BtsRefSeedData.Cities(now));
+            await dbContext.SaveChangesAsync();
+        }
+
+        private async Task SeedHeroBannersAsync()
+        {
+            var hasBanners = await dbContext.HeroBanners.AnyAsync();
+            if (hasBanners) return;
+
+            var banners = new[]
+            {
+                new HeroBanner
+                {
+                    Title = new MultiLanguageField
+                    {
+                        Uz = "Muzlatgichlar uchun ajoyib chegirmalar",
+                        Ru = "Отличные скидки на холодильники",
+                        En = "Amazing deals on refrigerators",
+                        Cyrl = "Музлатгичлар учун ажойиб чегирмалар"
+                    },
+                    Subtitle = new MultiLanguageField
+                    {
+                        Uz = "Zamonaviy muzlatgichlarni optimum narxlarda oling",
+                        Ru = "Купите современные холодильники по оптимальным ценам",
+                        En = "Get modern refrigerators at optimal prices",
+                        Cyrl = "Замонавий музлатгичларни оптимум нархларда олинг"
+                    },
+                    BadgeText = new MultiLanguageField
+                    {
+                        Uz = "-20%",
+                        Ru = "-20%",
+                        En = "-20%",
+                        Cyrl = "-20%"
+                    },
+                    CtaText = new MultiLanguageField
+                    {
+                        Uz = "Xarid qilish",
+                        Ru = "Купить",
+                        En = "Shop now",
+                        Cyrl = "Харид қилиш"
+                    },
+                    CtaLink = "/category/refrigerators",
+                    ImageUrl = "/banners/hero1.png", // served from Api/wwwroot/banners (old landing-page banner)
+                    SortOrder = 0,
+                    IsActive = true,
+                },
+                new HeroBanner
+                {
+                    Title = new MultiLanguageField
+                    {
+                        Uz = "Kir mashinalarida super aksiya",
+                        Ru = "Супер акция на стиральные машины",
+                        En = "Super sale on washing machines",
+                        Cyrl = "Кир машиналарида супер акция"
+                    },
+                    Subtitle = new MultiLanguageField
+                    {
+                        Uz = "Energy-sarflagi past kir mashinalarini tanlang",
+                        Ru = "Выбирайте энергоэффективные стиральные машины",
+                        En = "Choose energy-efficient washing machines",
+                        Cyrl = "Энергия-сарфлаги паст кир машиналарини танланг"
+                    },
+                    BadgeText = null,
+                    CtaText = new MultiLanguageField
+                    {
+                        Uz = "Ko'rish",
+                        Ru = "Смотреть",
+                        En = "View deals",
+                        Cyrl = "Кўриш"
+                    },
+                    CtaLink = "/category/washing-machines",
+                    ImageUrl = "/banners/hero2.png", // served from Api/wwwroot/banners (old landing-page banner)
+                    SortOrder = 1,
+                    IsActive = true,
+                },
+                new HeroBanner
+                {
+                    Title = new MultiLanguageField
+                    {
+                        Uz = "Televizorlar uchun maxsus taklif",
+                        Ru = "Специальное предложение на телевизоры",
+                        En = "Special offer on televisions",
+                        Cyrl = "Телевизорлар учун махсус таклиф"
+                    },
+                    Subtitle = new MultiLanguageField
+                    {
+                        Uz = "4K va OLED televizorlarni eng yaxshi narxlarda",
+                        Ru = "4K и OLED телевизоры по лучшим ценам",
+                        En = "4K and OLED TVs at the best prices",
+                        Cyrl = "4K ва OLED телевизорларни энг яхши нархларда"
+                    },
+                    BadgeText = null,
+                    CtaText = new MultiLanguageField
+                    {
+                        Uz = "Ko'rish",
+                        Ru = "Смотреть",
+                        En = "View deals",
+                        Cyrl = "Кўриш"
+                    },
+                    CtaLink = "/category/televisions",
+                    ImageUrl = "/banners/hero3.png", // served from Api/wwwroot/banners (old landing-page banner)
+                    SortOrder = 2,
+                    IsActive = true,
+                },
+            };
+
+            dbContext.HeroBanners.AddRange(banners);
             await dbContext.SaveChangesAsync();
         }
 
